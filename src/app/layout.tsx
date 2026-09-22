@@ -29,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="bg" className="scroll-smooth">
+    <html lang="bg" className="scroll-smooth" data-scroll-behavior="smooth">
       <body className="min-h-screen flex flex-col bg-[#FAF8FC] text-slate-900 selection:bg-purple-200 selection:text-purple-900">
         {children}
       </body>
