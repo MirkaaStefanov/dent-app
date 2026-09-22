@@ -1,0 +1,13 @@
+[build]
+  publish = "out"
+  command = "npm run build"
+
+[[redirects]]
+  from = "/booking"
+  to = "/zapisi-chas/"
+  status = 301
+
+[[redirects]]
+  from = "/booking/*"
+  to = "/zapisi-chas/"
+  status = 301

@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🦷 Дентален Център & Система за записване на часове — Търговище
+> Модерен уебсайт за зъболекарски кабинет в гр. Търговище с онлайн записване на часове, Google вход, седмичен график, управление на почивни дни, напомняния и елегантен лилав дизайн.
 
-## Getting Started
+---
 
-First, run the development server:
+## 🌟 Основни възможности
+
+### 1. 🟣 Публичен уебсайт & Реклама за Търговище
+- **Hero презентация** на кабинета на **Д-р Джанел Аяз** с акцент върху безболезненото лечение и модерните технологии.
+- **Дентални услуги & ценоразпис** (профилактика, почистване на зъбен камък с AirFlow, фотополимерни пломби, ендодонтия, избелване, цирконий, детска стоматология).
+- **Интерактивно онлайн записване на час** с калкулатор на свободни слотове в реално време, съобразен с работното време и обедните почивки.
+- **Екран с потвърждение и празнични конфети** след успешно запазване.
+- **Информация за кабинета, отзиви, ЧЗВ и контакти** с точна локация в гр. Търговище (бул. „Васил Левски“ №12).
+
+### 2. 👩‍⚕️ Зъболекарски Админ Панел (`/admin`)
+- **Вход с Google** (интегриран със Supabase OAuth + Бърз демо вход за тестове).
+- **График и календар на часовете**:
+  - Следене на днешните и предстоящите часове по дати и статуси (Потвърден, Приключил, Отменен).
+  - **Бутон „+ Запиши час (Телефон / Кабинет)“**: лекарката може бързо да запише час за пациент, който се обажда по телефона или е на място.
+  - Бутон за **изпращане на напомняне** до пациента.
+- **Управление на услуги**:
+  - Добавяне на нови услуги, промяна на цени и времетраене, скриване или изтриване.
+- **Работно време**:
+  - Настройка на работните часове и обедните почивки за всеки ден от седмицата (Понеделник - Неделя).
+- **Почивни дни & Отпуски**:
+  - Обявяване на неработни периоди (отпуск, празници, конференции), при което тези дни автоматично стават недостъпни за записване от пациентите.
+- **Настройки на кабинета**:
+  - Редакция на контактите, лекаря и адреса в Търговище.
+
+---
+
+## 🛠️ Технологичен стак
+- **Фронтенд:** Next.js 15 (App Router, TypeScript)
+- **Стилизация:** Tailwind CSS + персонализирана **лилава цветова гама** (Royal Violet, Lilac, Lavender)
+- **База данни & Автентикация:** Supabase PostgreSQL + Supabase Auth
+- **Икони & UI:** Lucide React + Canvas Confetti
+- **Защита на данните:** Row Level Security (RLS) и SQL RPC функция за скриване на личните данни на другите пациенти при проверка на свободни часове.
+
+---
+
+## 🚀 Стартиране на проекта локално
 
 ```bash
+# 1. Инсталиране на зависимости (ако не са инсталирани)
+npm install
+
+# 2. Стартиране на dev сървъра
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# 3. Отворете в браузъра:
+# Публичен сайт:  http://localhost:3000
+# Админ панел:    http://localhost:3000/admin
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🗄️ Свързване със Supabase
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Създайте нов проект или използвайте съществуващ в [Supabase Dashboard](https://supabase.com).
+2. Отворете **SQL Editor** в Supabase и изпълнете скрипта от файла:
+   ```
+   supabase/schema.sql
+   ```
+   *(Скриптът автоматично създава всички таблици, RLS политики, права и начални данни за услугите).*
+3. Копирайте ключовете си в `.env.local`:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+   ```
+4. За Google вход: Включете Google доставчика в **Supabase Auth -> Providers -> Google**.
