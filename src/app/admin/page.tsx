@@ -191,15 +191,17 @@ export default function AdminPage() {
     if (isAuthenticated) {
       fetchAllData(true);
 
-      const handleUpdate = () => {
-        fetchAllData(false);
+      const handleStorageUpdate = (e: StorageEvent) => {
+        if (e.key && e.key.startsWith('dent_')) {
+          fetchAllData(false);
+        }
       };
 
-      window.addEventListener('dent_data_updated', handleUpdate);
+      window.addEventListener('storage', handleStorageUpdate);
       const interval = setInterval(() => fetchAllData(false), 30000); // auto-sync new appointments silently every 30s
 
       return () => {
-        window.removeEventListener('dent_data_updated', handleUpdate);
+        window.removeEventListener('storage', handleStorageUpdate);
         clearInterval(interval);
       };
     }
@@ -394,7 +396,13 @@ export default function AdminPage() {
     setWorkingHours((prev) =>
       prev.map((wh) => (wh.day_of_week === dayOfWeek ? { ...wh, [field]: value } : wh))
     );
-    showToast(`Работното време беше обновено.`);
+    const dayItem = workingHours.find((w) => w.day_of_week === dayOfWeek);
+    const dayName = dayItem ? dayItem.day_name : 'Денят';
+    if (field === 'is_working') {
+      showToast(value ? `${dayName} е активиран като работен ден.` : `${dayName} е отбелязан като почивен ден.`);
+    } else {
+      showToast(`Работното време за ${dayName} беше обновено.`);
+    }
     await updateWorkingHour(dayOfWeek, { [field]: value });
   };
 
@@ -970,23 +978,35 @@ export default function AdminPage() {
                     key={wh.day_of_week}
                     className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/40 transition-colors"
                   >
-                    {/* Day name & toggle working */}
-                    <div className="flex items-center gap-3 w-48">
-                      <input
-                        type="checkbox"
-                        checked={wh.is_working}
-                        id={`working-${wh.day_of_week}`}
-                        onChange={(e) =>
-                          handleWorkingHourChange(wh.day_of_week, 'is_working', e.target.checked)
+                    {/* Day name & toggle switch */}
+                    <div className="flex items-center gap-3 w-52 shrink-0">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={wh.is_working}
+                        onClick={() =>
+                          handleWorkingHourChange(wh.day_of_week, 'is_working', !wh.is_working)
                         }
-                        className="w-4 h-4 text-purple-700 rounded-sm focus:ring-purple-500 cursor-pointer"
-                      />
-                      <label
-                        htmlFor={`working-${wh.day_of_week}`}
-                        className="font-bold text-sm text-slate-900 cursor-pointer select-none"
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                          wh.is_working ? 'bg-purple-800' : 'bg-slate-200'
+                        }`}
+                        title={wh.is_working ? 'Кликнете за почивен ден' : 'Кликнете за работен ден'}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                            wh.is_working ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleWorkingHourChange(wh.day_of_week, 'is_working', !wh.is_working)
+                        }
+                        className="font-bold text-sm text-slate-900 cursor-pointer select-none hover:text-purple-800 transition-colors text-left"
                       >
                         {wh.day_name}
-                      </label>
+                      </button>
                     </div>
 
                     {wh.is_working ? (
@@ -996,7 +1016,7 @@ export default function AdminPage() {
                           <span className="text-slate-500 font-medium">Работна смяна:</span>
                           <input
                             type="time"
-                            value={wh.start_time}
+                            value={(wh.start_time || '09:00').slice(0, 5)}
                             onChange={(e) =>
                               handleWorkingHourChange(wh.day_of_week, 'start_time', e.target.value)
                             }
@@ -1005,7 +1025,7 @@ export default function AdminPage() {
                           <span className="text-slate-400">—</span>
                           <input
                             type="time"
-                            value={wh.end_time}
+                            value={(wh.end_time || '18:00').slice(0, 5)}
                             onChange={(e) =>
                               handleWorkingHourChange(wh.day_of_week, 'end_time', e.target.value)
                             }
@@ -1018,7 +1038,7 @@ export default function AdminPage() {
                           <span className="text-slate-500 font-medium">Обедна почивка:</span>
                           <input
                             type="time"
-                            value={wh.break_start || ''}
+                            value={wh.break_start ? wh.break_start.slice(0, 5) : ''}
                             onChange={(e) =>
                               handleWorkingHourChange(wh.day_of_week, 'break_start', e.target.value || null)
                             }
@@ -1027,7 +1047,7 @@ export default function AdminPage() {
                           <span className="text-slate-400">—</span>
                           <input
                             type="time"
-                            value={wh.break_end || ''}
+                            value={wh.break_end ? wh.break_end.slice(0, 5) : ''}
                             onChange={(e) =>
                               handleWorkingHourChange(wh.day_of_week, 'break_end', e.target.value || null)
                             }
@@ -1041,16 +1061,23 @@ export default function AdminPage() {
                       </span>
                     )}
 
-                    <div className="text-xs font-bold">
-                      {wh.is_working ? (
-                        <span className="text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                          Работи ({wh.start_time} - {wh.end_time})
-                        </span>
-                      ) : (
-                        <span className="text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
-                          Затворен
-                        </span>
-                      )}
+                    <div className="text-xs font-semibold">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleWorkingHourChange(wh.day_of_week, 'is_working', !wh.is_working)
+                        }
+                        className={`px-3 py-1.5 rounded-full transition-all cursor-pointer ${
+                          wh.is_working
+                            ? 'text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200'
+                            : 'text-slate-500 bg-slate-100 hover:bg-slate-200'
+                        }`}
+                        title="Кликнете за смяна на статуса"
+                      >
+                        {wh.is_working
+                          ? `Работи (${(wh.start_time || '09:00').slice(0, 5)} - ${(wh.end_time || '18:00').slice(0, 5)})`
+                          : 'Почивен ден'}
+                      </button>
                     </div>
                   </div>
                 ))}

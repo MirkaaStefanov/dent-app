@@ -207,7 +207,16 @@ export async function getWorkingHours(): Promise<WorkingHour[]> {
 
   const res = await runWithTimeout<WorkingHour[]>(async () => {
     const { data, error } = await supabase!.from('working_hours').select('*').order('day_of_week', { ascending: true });
-    if (!error && data && data.length > 0) return data as WorkingHour[];
+    if (!error && data && data.length > 0) {
+      const normalized = data.map((wh: any) => ({
+        ...wh,
+        start_time: wh.start_time ? String(wh.start_time).slice(0, 5) : '09:00',
+        end_time: wh.end_time ? String(wh.end_time).slice(0, 5) : '18:00',
+        break_start: wh.break_start ? String(wh.break_start).slice(0, 5) : null,
+        break_end: wh.break_end ? String(wh.break_end).slice(0, 5) : null,
+      }));
+      return normalized as WorkingHour[];
+    }
     return null;
   });
 
@@ -225,9 +234,24 @@ export async function updateWorkingHour(day_of_week: DayOfWeek, updates: Partial
   if (index === -1) return null;
 
   current[index] = { ...current[index], ...updates };
-  setLocalItem(STORAGE_KEYS.WORKING_HOURS, [...current], true);
+  setLocalItem(STORAGE_KEYS.WORKING_HOURS, [...current], false);
 
-  runWithTimeout(() => supabase!.from('working_hours').upsert(current[index])).catch(() => {});
+  const updatePayload: any = { ...updates };
+  delete updatePayload.id;
+  delete updatePayload.day_of_week;
+
+  runWithTimeout(async () => {
+    if (!supabase) return null;
+    const { error } = await supabase
+      .from('working_hours')
+      .update(updatePayload)
+      .eq('day_of_week', day_of_week);
+    if (error) {
+      console.warn('[Supabase] Грешка при обновяване на работно време:', error);
+    }
+    return true;
+  }).catch(() => {});
+
   return current[index];
 }
 
