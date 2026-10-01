@@ -29,8 +29,8 @@ const STORAGE_KEYS = {
 // ==========================================
 let isSupabaseOnline = true;
 let lastFailureTimestamp = 0;
-const OFFLINE_COOLDOWN_MS = 45000; // 45 секунди при грешка преди повторен опит
-const DEFAULT_TIMEOUT_MS = 1200; // Максимум 1.2 секунди за мрежова заявка
+const OFFLINE_COOLDOWN_MS = 15000; // 15 секунди при грешка преди повторен опит
+const DEFAULT_TIMEOUT_MS = 4000; // 4.0 секунди за мрежова заявка (предвидени за студен старт)
 
 /**
  * Изпълнява заявка към Supabase с твърд таймаут.
@@ -530,16 +530,20 @@ export async function syncWithSupabase(): Promise<{ synced: boolean; message: st
     return { synced: false, message: 'Supabase не е конфигуриран.' };
   }
 
+  // Нулираме евентуален предходен офлайн статус за ръчната проверка
+  isSupabaseOnline = true;
+  lastFailureTimestamp = 0;
+
   // 1. Проверяваме дали Supabase е събуден и отговаря
   const isAlive = await runWithTimeout(async () => {
     const { data, error } = await supabase!.from('clinic_settings').select('id').limit(1);
     return !error;
-  }, 2000);
+  }, 5000);
 
   if (!isAlive) {
     return {
       synced: false,
-      message: 'Базата данни в Supabase все още стартира или е паузирана. Моля, натиснете Restore в панела на Supabase.',
+      message: 'Базата данни в Supabase все още стартира или е паузирана. Моля, изчакайте няколко секунди или натиснете Restore в панела на Supabase.',
     };
   }
 
