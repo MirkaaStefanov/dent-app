@@ -521,3 +521,77 @@ export async function getAvailableSlots(
     reason: availableSlots.length === 0 ? 'Няма свободни часове за тази дата' : undefined,
   };
 }
+
+// ==========================================
+// 7. СИНХРОНИЗАЦИЯ С ОБЛАКА (SUPABASE SYNC)
+// ==========================================
+export async function syncWithSupabase(): Promise<{ synced: boolean; message: string }> {
+  if (!isSupabaseConfigured || !supabase) {
+    return { synced: false, message: 'Supabase не е конфигуриран.' };
+  }
+
+  // 1. Проверяваме дали Supabase е събуден и отговаря
+  const isAlive = await runWithTimeout(async () => {
+    const { data, error } = await supabase!.from('clinic_settings').select('id').limit(1);
+    return !error;
+  }, 2000);
+
+  if (!isAlive) {
+    return {
+      synced: false,
+      message: 'Базата данни в Supabase все още стартира или е паузирана. Моля, натиснете Restore в панела на Supabase.',
+    };
+  }
+
+  try {
+    // 2. Синхронизираме часовете
+    const localAppointments = getLocalItem<Appointment[]>(STORAGE_KEYS.APPOINTMENTS, []);
+    const { data: remoteAppointments } = await supabase.from('appointments').select('*').order('date', { ascending: true });
+
+    if (remoteAppointments) {
+      const remoteIds = new Set(remoteAppointments.map((a: any) => a.id));
+
+      for (const apt of localAppointments) {
+        if (!remoteIds.has(apt.id)) {
+          const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(apt.service_id);
+          const payload: any = {
+            patient_name: apt.patient_name,
+            patient_phone: apt.patient_phone,
+            patient_email: apt.patient_email || null,
+            date: apt.date,
+            start_time: apt.start_time,
+            end_time: apt.end_time,
+            status: apt.status || 'confirmed',
+            notes: apt.notes || null,
+            booked_by: apt.booked_by || 'patient',
+            reminder_sent: Boolean(apt.reminder_sent),
+          };
+          if (isUUID) payload.service_id = apt.service_id;
+          await supabase.from('appointments').insert(payload);
+        }
+      }
+
+      const { data: finalRemote } = await supabase.from('appointments').select('*').order('date', { ascending: true });
+      if (finalRemote && finalRemote.length > 0) {
+        const services = getLocalItem<Service[]>(STORAGE_KEYS.SERVICES, initialServices);
+        const enriched: Appointment[] = finalRemote.map((apt: any) => {
+          const srv = services.find((s) => s.id === apt.service_id);
+          return {
+            ...apt,
+            start_time: apt.start_time ? String(apt.start_time).slice(0, 5) : apt.start_time,
+            end_time: apt.end_time ? String(apt.end_time).slice(0, 5) : apt.end_time,
+            service_title: apt.service_title || srv?.title || 'Стоматологична процедура',
+            service_duration: apt.service_duration || srv?.duration_minutes || 30,
+            service_price: apt.service_price !== undefined && apt.service_price !== null ? apt.service_price : srv?.price_bgn || 0,
+          };
+        });
+        setLocalItem(STORAGE_KEYS.APPOINTMENTS, enriched, true);
+      }
+    }
+
+    return { synced: true, message: 'Всички данни бяха синхронизирани успешно с базата!' };
+  } catch (err) {
+    console.error('Sync error:', err);
+    return { synced: false, message: 'Възникна грешка при синхронизацията.' };
+  }
+}

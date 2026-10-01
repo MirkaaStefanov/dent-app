@@ -28,6 +28,7 @@ import {
   updateAppointmentStatus,
   deleteAppointment,
   sendAppointmentReminder,
+  syncWithSupabase,
 } from '@/lib/storage';
 import { formatBulgarianDate } from '@/lib/notifications';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
@@ -607,18 +608,20 @@ export default function AdminPage() {
                 <span>Запиши час</span>
               </button>
 
-              {/* SECONDARY UTILITY: Обнови */}
+              {/* SECONDARY UTILITY: Обнови & Синхронизирай */}
               <button
                 type="button"
-                onClick={() => {
-                  fetchAllData();
-                  showToast('Данните са обновени успешно!');
+                onClick={async () => {
+                  showToast('Синхронизиране с базата...');
+                  const res = await syncWithSupabase();
+                  await fetchAllData(false);
+                  showToast(res.message);
                 }}
                 className="inline-flex items-center gap-1 p-2 sm:px-2.5 sm:py-2 rounded-xl text-xs font-semibold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 transition-colors cursor-pointer"
-                title="Презареди данните от базата"
+                title="Синхронизирай с облачната база данни"
               >
                 <RotateCw className={`w-3.5 h-3.5 text-violet-700 ${isLoading ? 'animate-spin' : ''}`} />
-                <span className="hidden lg:inline text-[11px]">Обнови</span>
+                <span className="hidden lg:inline text-[11px]">Синхронизирай</span>
               </button>
 
               {/* SECONDARY LINK: Към сайта */}
