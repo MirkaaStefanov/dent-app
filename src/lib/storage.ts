@@ -205,7 +205,24 @@ export async function deleteDayOff(id: string): Promise<boolean> {
 export async function getAppointments(): Promise<Appointment[]> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase.from('appointments').select('*').order('date', { ascending: true });
-    if (!error && data) return data;
+    if (!error && data) {
+      // Enrich with service information if columns weren't stored directly
+      const services = await getServices();
+      const enriched: Appointment[] = data.map((apt: any) => {
+        const srv = services.find((s) => s.id === apt.service_id);
+        const startTime = apt.start_time ? String(apt.start_time).slice(0, 5) : apt.start_time;
+        const endTime = apt.end_time ? String(apt.end_time).slice(0, 5) : apt.end_time;
+        return {
+          ...apt,
+          start_time: startTime,
+          end_time: endTime,
+          service_title: apt.service_title || srv?.title,
+          service_duration: apt.service_duration || srv?.duration_minutes || 30,
+          service_price: apt.service_price !== undefined && apt.service_price !== null ? apt.service_price : srv?.price_bgn,
+        };
+      });
+      return enriched;
+    }
   }
   return getLocalItem<Appointment[]>(STORAGE_KEYS.APPOINTMENTS, initialAppointments);
 }
@@ -213,42 +230,76 @@ export async function getAppointments(): Promise<Appointment[]> {
 export async function addAppointment(
   appointmentData: Omit<Appointment, 'id' | 'created_at' | 'reminder_sent'>
 ): Promise<Appointment> {
-  if (isSupabaseConfigured && supabase) {
-    const insertPayload: any = {
-      ...appointmentData,
-      reminder_sent: false,
-    };
-
-    // Проверка за валиден UUID за service_id
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      insertPayload.service_id
-    );
-    if (!isUUID) {
-      delete insertPayload.service_id;
-    }
-
-    const { data, error } = await supabase.from('appointments').insert(insertPayload).select().single();
-    if (!error && data) {
-      const appointments = await getAppointments();
-      setLocalItem(STORAGE_KEYS.APPOINTMENTS, [data, ...appointments]);
-      return data;
-    }
-    if (error) {
-      console.error('Supabase addAppointment error:', error);
-    }
-  }
-
-  const newAppointment: Appointment = {
+  let createdApt: Appointment = {
     ...appointmentData,
     id: `apt-${Date.now()}`,
     reminder_sent: false,
     created_at: new Date().toISOString(),
   };
 
+  if (isSupabaseConfigured && supabase) {
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      appointmentData.service_id
+    );
+
+    // Core table columns matching standard appointments schema
+    const basePayload: any = {
+      patient_name: appointmentData.patient_name,
+      patient_phone: appointmentData.patient_phone,
+      patient_email: appointmentData.patient_email || null,
+      date: appointmentData.date,
+      start_time: appointmentData.start_time,
+      end_time: appointmentData.end_time,
+      status: appointmentData.status || 'confirmed',
+      notes: appointmentData.notes || null,
+      booked_by: appointmentData.booked_by || 'patient',
+      reminder_sent: false,
+    };
+    if (isUUID) {
+      basePayload.service_id = appointmentData.service_id;
+    }
+
+    // Extended payload with denormalized service details
+    const fullPayload: any = {
+      ...basePayload,
+      service_title: appointmentData.service_title,
+      service_duration: appointmentData.service_duration,
+      service_price: appointmentData.service_price,
+    };
+
+    // Attempt 1: Try inserting with extended columns
+    let insertRes = await supabase.from('appointments').insert(fullPayload).select().maybeSingle();
+
+    // If extended columns don't exist in Supabase table (PGRST204), fallback to core basePayload
+    if (insertRes.error && insertRes.error.code === 'PGRST204') {
+      insertRes = await supabase.from('appointments').insert(basePayload).select().maybeSingle();
+    }
+
+    // If select was denied by RLS (e.g. unauthenticated public user), perform clean insert
+    if (insertRes.error && insertRes.error.code === '42501') {
+      const fallbackInsert = await supabase.from('appointments').insert(basePayload);
+      if (fallbackInsert.error) {
+        console.error('Supabase addAppointment fallback insert error:', fallbackInsert.error);
+      }
+    } else if (insertRes.error) {
+      console.error('Supabase addAppointment error:', insertRes.error);
+    } else if (insertRes.data) {
+      createdApt = {
+        ...createdApt,
+        ...insertRes.data,
+        start_time: insertRes.data.start_time ? String(insertRes.data.start_time).slice(0, 5) : appointmentData.start_time,
+        end_time: insertRes.data.end_time ? String(insertRes.data.end_time).slice(0, 5) : appointmentData.end_time,
+        service_title: insertRes.data.service_title || appointmentData.service_title,
+        service_duration: insertRes.data.service_duration || appointmentData.service_duration,
+        service_price: insertRes.data.service_price !== undefined ? insertRes.data.service_price : appointmentData.service_price,
+      };
+    }
+  }
+
   const appointments = await getAppointments();
-  const updated = [newAppointment, ...appointments];
+  const updated = [createdApt, ...appointments.filter((a) => a.id !== createdApt.id)];
   setLocalItem(STORAGE_KEYS.APPOINTMENTS, updated);
-  return newAppointment;
+  return createdApt;
 }
 
 export async function updateAppointmentStatus(id: string, status: AppointmentStatus): Promise<boolean> {
@@ -297,9 +348,17 @@ export async function sendAppointmentReminder(id: string): Promise<{ success: bo
 // ==========================================
 // 6. АЛГОРИТЪМ ЗА ИЗЧИСЛЯВАНЕ НА СВОБОДНИ ЧАСОВЕ
 // ==========================================
-function timeToMinutes(timeStr: string): number {
-  const [h, m] = timeStr.split(':').map(Number);
-  return h * 60 + m;
+function parseLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+
+function timeToMinutes(timeStr?: string | null): number {
+  if (!timeStr) return 0;
+  const clean = String(timeStr).trim();
+  const match = clean.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return 0;
+  return Number(match[1]) * 60 + Number(match[2]);
 }
 
 function minutesToTime(mins: number): string {
@@ -312,7 +371,7 @@ export async function getAvailableSlots(
   dateStr: string,
   durationMinutes: number
 ): Promise<{ slots: string[]; reason?: string }> {
-  const dateObj = new Date(dateStr);
+  const dateObj = parseLocalDate(dateStr);
   const dayOfWeek = dateObj.getDay() as DayOfWeek;
 
   // 1. Почивни дни / отпуски

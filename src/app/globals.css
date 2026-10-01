@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #6b21a8;
-  --color-primary-hover: #581c87;
-  --color-primary-light: #faf5ff;
+  --color-primary: #5b21b6;
+  --color-primary-hover: #4c1d95;
+  --color-primary-light: #f5f3ff;
   --font-serif: "Playfair Display", Georgia, Cambria, "Times New Roman", Times, serif;
 }
 

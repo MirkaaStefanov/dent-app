@@ -5,8 +5,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar as CalendarIcon,
+  CalendarOff,
 } from 'lucide-react';
 import { formatBulgarianDate } from '@/lib/notifications';
+import { DayOff } from '@/types/database';
 
 export interface InteractiveCalendarProps {
   selectedDate: string; // 'YYYY-MM-DD' or ''
@@ -19,6 +21,7 @@ export interface InteractiveCalendarProps {
   title?: string;
   onClearFilter?: () => void;
   className?: string;
+  daysOff?: DayOff[];
 }
 
 const BG_MONTHS = [
@@ -35,6 +38,10 @@ function toIsoDate(year: number, month: number, day: number): string {
   return `${y}-${m}-${d}`;
 }
 
+function getDayOffForDate(dateStr: string, list: DayOff[] = []): DayOff | undefined {
+  return list.find((d) => dateStr >= d.start_date && dateStr <= d.end_date);
+}
+
 export default function InteractiveCalendar({
   selectedDate,
   onSelectDate,
@@ -46,6 +53,7 @@ export default function InteractiveCalendar({
   title,
   onClearFilter,
   className = '',
+  daysOff = [],
 }: InteractiveCalendarProps) {
   const today = new Date();
   const todayStr = toIsoDate(today.getFullYear(), today.getMonth(), today.getDate());
@@ -129,20 +137,21 @@ export default function InteractiveCalendar({
 
   return (
     <div
-      className={`bg-white rounded-3xl border border-purple-100 shadow-lg shadow-purple-900/5 p-4 sm:p-6 transition-all ${className}`}
+      className={`bg-white rounded-3xl border-2 border-purple-200 shadow-xl shadow-purple-950/5 p-3.5 sm:p-6 transition-all ${className}`}
     >
       {/* Calendar Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-purple-50">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-purple-100">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-2xl bg-linear-to-br from-purple-700 to-violet-800 text-white flex items-center justify-center shadow-md shadow-purple-900/20 border border-purple-400/30">
             <CalendarIcon className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="font-serif font-bold text-slate-900 text-sm sm:text-base">
-              {title || (variant === 'admin' ? 'График по календар' : 'Изберете дата')}
+            <h3 className="font-serif font-black text-purple-950 text-sm sm:text-base leading-tight">
+              {title || (variant === 'admin' ? 'График по календар' : 'Изберете дата за преглед')}
             </h3>
-            <span className="text-xs text-purple-700 font-semibold">
-              {BG_MONTHS[viewMonth]} {viewYear} г.
+            <span className="text-xs text-purple-700 font-extrabold flex items-center gap-1.5 mt-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-600 inline-block animate-pulse" />
+              <span>{BG_MONTHS[viewMonth]} {viewYear} г.</span>
             </span>
           </div>
         </div>
@@ -153,10 +162,10 @@ export default function InteractiveCalendar({
             <button
               type="button"
               onClick={onClearFilter}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-colors cursor-pointer ${
                 !selectedDate
                   ? 'bg-purple-800 text-white shadow-xs'
-                  : 'bg-purple-50 text-purple-900 hover:bg-purple-100'
+                  : 'bg-purple-50 text-purple-900 hover:bg-purple-100 border border-purple-200'
               }`}
             >
               Всички дати
@@ -166,17 +175,17 @@ export default function InteractiveCalendar({
           <button
             type="button"
             onClick={handleJumpToToday}
-            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-800 transition-colors"
+            className="px-3 py-1.5 rounded-xl text-xs font-black bg-purple-100/80 hover:bg-purple-200/80 text-purple-950 border border-purple-200 transition-all cursor-pointer shadow-2xs"
           >
             Днес
           </button>
 
-          <div className="flex items-center gap-0.5 ml-1 bg-slate-50 p-1 rounded-xl border border-slate-200">
+          <div className="flex items-center gap-0.5 ml-1 bg-purple-50 p-1 rounded-xl border border-purple-200 shadow-2xs">
             <button
               type="button"
               onClick={handlePrevMonth}
               aria-label="Предишен месец"
-              className="p-1 rounded-lg text-slate-600 hover:text-purple-800 hover:bg-white transition-all active:scale-95"
+              className="p-1 rounded-lg text-purple-900 hover:text-purple-950 hover:bg-white transition-all active:scale-95 cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -184,7 +193,7 @@ export default function InteractiveCalendar({
               type="button"
               onClick={handleNextMonth}
               aria-label="Следващ месец"
-              className="p-1 rounded-lg text-slate-600 hover:text-purple-800 hover:bg-white transition-all active:scale-95"
+              className="p-1 rounded-lg text-purple-900 hover:text-purple-950 hover:bg-white transition-all active:scale-95 cursor-pointer"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -192,18 +201,24 @@ export default function InteractiveCalendar({
         </div>
       </div>
 
-      {/* Days of Week Header */}
-      <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2 text-center">
-        {BG_DAYS_HEADER.map((day, idx) => (
-          <div
-            key={day}
-            className={`text-[11px] sm:text-xs font-bold py-1 ${
-              idx >= 5 ? 'text-purple-400' : 'text-slate-500'
-            }`}
-          >
-            {day}
-          </div>
-        ))}
+      {/* Days of Week Header with Weekend Highlight */}
+      <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2.5 text-center bg-linear-to-r from-purple-100/90 via-violet-100/80 to-purple-100/90 p-1 rounded-2xl border border-purple-200/90">
+        {BG_DAYS_HEADER.map((day, idx) => {
+          const isWeekendHeader = idx >= 5;
+          return (
+            <div
+              key={day}
+              className={`text-[11px] sm:text-xs py-1.5 rounded-xl transition-all ${
+                isWeekendHeader
+                  ? 'bg-amber-100 text-amber-950 border border-amber-300 shadow-2xs font-black'
+                  : 'text-purple-950 font-bold'
+              }`}
+            >
+              <span>{day}</span>
+              {isWeekendHeader && <span className="hidden sm:inline text-[10px] ml-0.5">☀️</span>}
+            </div>
+          );
+        })}
       </div>
 
       {/* Days Grid */}
@@ -211,13 +226,16 @@ export default function InteractiveCalendar({
         {/* Previous month padding days */}
         {prevMonthDays.map((item, idx) => {
           const disabled = checkDisabled(item.dateStr, idx);
+          const isWeekend = idx === 5 || idx === 6;
           return (
             <button
               key={`prev-${item.dateStr}`}
               type="button"
               disabled={disabled}
               onClick={() => onSelectDate(item.dateStr)}
-              className={`h-11 sm:h-12 rounded-xl flex flex-col items-center justify-center text-xs transition-colors text-slate-300 ${
+              className={`h-11 sm:h-12 rounded-xl flex flex-col items-center justify-center text-xs transition-colors ${
+                isWeekend ? 'bg-amber-50/20 text-slate-300' : 'bg-purple-50/15 text-slate-300'
+              } ${
                 disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer hover:bg-purple-50/50'
               }`}
             >
@@ -229,10 +247,13 @@ export default function InteractiveCalendar({
         {/* Current month days */}
         {currentMonthDays.map((item, idx) => {
           const dayOfWeek = (firstDayIndex + idx) % 7;
+          const isWeekend = dayOfWeek === 5 || dayOfWeek === 6;
           const disabled = checkDisabled(item.dateStr, dayOfWeek);
           const isSelected = selectedDate === item.dateStr;
           const isToday = item.dateStr === todayStr;
+          const isPast = minDate ? item.dateStr < minDate : item.dateStr < todayStr;
           const count = appointmentsByDate[item.dateStr] || 0;
+          const dayOff = getDayOffForDate(item.dateStr, daysOff);
 
           return (
             <button
@@ -240,47 +261,112 @@ export default function InteractiveCalendar({
               type="button"
               disabled={disabled}
               onClick={() => onSelectDate(item.dateStr)}
-              className={`h-11 sm:h-12 rounded-xl flex flex-col items-center justify-center relative transition-all border ${
+              title={
+                dayOff
+                  ? `Почивен ден / Отпуск: ${dayOff.reason}`
+                  : isWeekend
+                  ? 'Уикенд (събота/неделя)'
+                  : undefined
+              }
+              className={`h-12 sm:h-14 rounded-2xl flex flex-col items-center justify-between p-1 sm:p-1.5 relative transition-all border-2 cursor-pointer overflow-hidden ${
                 disabled
-                  ? 'bg-slate-50/50 text-slate-300 border-transparent cursor-not-allowed'
+                  ? 'bg-slate-100/50 text-slate-300 border-slate-200/50 opacity-40 cursor-not-allowed'
                   : isSelected
-                  ? 'bg-purple-800 text-white border-purple-800 shadow-md shadow-purple-900/20 scale-[1.02] z-10'
+                  ? 'bg-linear-to-r from-purple-700 to-violet-800 text-white border-purple-800 shadow-md shadow-purple-950/20 scale-[1.02] z-10'
+                  : dayOff
+                  ? 'bg-rose-50/90 text-rose-950 border-rose-300 hover:border-rose-400 hover:bg-rose-100/80 shadow-2xs'
                   : isToday
-                  ? 'bg-purple-50 text-purple-900 font-bold border-purple-200 hover:bg-purple-100'
-                  : 'bg-white text-slate-800 border-slate-100 hover:border-purple-200 hover:bg-purple-50/40 active:scale-98'
+                  ? 'bg-linear-to-b from-purple-100 to-violet-100 text-purple-950 font-black border-purple-600 ring-2 ring-purple-400/50 hover:bg-purple-200/70 shadow-xs'
+                  : isPast
+                  ? 'bg-slate-100/50 text-slate-400 border-slate-200/60 opacity-50'
+                  : isWeekend
+                  ? 'bg-amber-50/80 text-amber-950 font-bold border-amber-200 hover:border-amber-300 hover:bg-amber-100/80 shadow-2xs'
+                  : 'bg-white text-purple-950 font-bold border-purple-100 hover:border-purple-300 hover:bg-purple-50/50 active:scale-98 shadow-2xs'
               }`}
             >
-              <span
-                className={`text-xs sm:text-sm ${
-                  isSelected
-                    ? 'font-bold text-white'
-                    : isToday
-                    ? 'font-bold text-purple-900'
-                    : 'font-semibold text-slate-800'
-                }`}
-              >
-                {item.dayNum}
-              </span>
-
-              {/* Today label */}
-              {isToday && !isSelected && (
-                <span className="text-[9px] font-bold text-purple-700 -mt-0.5">
-                  днес
-                </span>
+              {/* SVG Cross-Hatch / Strikethrough for Days Off */}
+              {dayOff && !disabled && (
+                <svg
+                  className="absolute inset-0 w-full h-full pointer-events-none stroke-rose-400/60"
+                  preserveAspectRatio="none"
+                >
+                  <line x1="0" y1="0" x2="100%" y2="100%" strokeWidth="1.5" strokeDasharray="3 2" />
+                  <line x1="100%" y1="0" x2="0" y2="100%" strokeWidth="1.5" strokeDasharray="3 2" />
+                </svg>
               )}
 
-              {/* Appointments Badge (Admin Mode) */}
-              {variant === 'admin' && count > 0 && (
+              {/* Day Number and Top Badges */}
+              <div className="w-full flex items-center justify-between z-10 relative leading-none">
                 <span
-                  className={`text-[9px] font-bold px-1.5 rounded-full mt-0.5 ${
+                  className={`text-xs sm:text-sm ${
                     isSelected
-                      ? 'bg-white text-purple-900'
-                      : 'bg-purple-100 text-purple-900'
+                      ? 'font-black text-white'
+                      : dayOff
+                      ? 'font-black text-rose-950'
+                      : isToday
+                      ? 'font-black text-purple-950'
+                      : isWeekend
+                      ? 'font-black text-amber-950'
+                      : 'font-extrabold text-purple-950'
                   }`}
                 >
-                  {count}
+                  {item.dayNum}
                 </span>
-              )}
+
+                {/* Weekend Badge Icon */}
+                {isWeekend && !dayOff && !isSelected && !isPast && (
+                  <span className="text-[9px] text-amber-700 font-extrabold">☀️</span>
+                )}
+
+                {/* Day Off Palm Icon */}
+                {dayOff && !isSelected && (
+                  <span className="text-[10px] leading-none" title={dayOff.reason}>
+                    🏖️
+                  </span>
+                )}
+              </div>
+
+              {/* Bottom Label: "днес" or Day Off reason / Weekend text */}
+              <div className="w-full text-center z-10 relative">
+                {isToday && !isSelected && (
+                  <span className="inline-block text-[9px] font-black text-purple-900 bg-purple-200/90 px-1 py-0.2 rounded-full uppercase tracking-wider">
+                    днес
+                  </span>
+                )}
+
+                {dayOff && (
+                  <span
+                    className={`block text-[8px] sm:text-[9px] font-black truncate max-w-full leading-tight ${
+                      isSelected ? 'text-white' : 'text-rose-800'
+                    }`}
+                  >
+                    Отпуск
+                  </span>
+                )}
+
+                {!dayOff && isWeekend && !isToday && (
+                  <span
+                    className={`block text-[8px] sm:text-[9px] font-extrabold truncate max-w-full leading-tight ${
+                      isSelected ? 'text-purple-100' : 'text-amber-800'
+                    }`}
+                  >
+                    Уикенд
+                  </span>
+                )}
+
+                {/* Appointments Badge (Admin Mode) */}
+                {variant === 'admin' && count > 0 && (
+                  <span
+                    className={`text-[9px] font-black px-1.5 py-0.2 rounded-full mt-0.5 inline-block ${
+                      isSelected
+                        ? 'bg-white text-purple-900 shadow-2xs'
+                        : 'bg-purple-100 text-purple-950 border border-purple-200'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                )}
+              </div>
             </button>
           );
         })}
@@ -288,13 +374,16 @@ export default function InteractiveCalendar({
         {/* Next month padding days */}
         {nextMonthDays.map((item, idx) => {
           const disabled = checkDisabled(item.dateStr, idx);
+          const isWeekend = idx === 5 || idx === 6;
           return (
             <button
               key={`next-${item.dateStr}`}
               type="button"
               disabled={disabled}
               onClick={() => onSelectDate(item.dateStr)}
-              className={`h-11 sm:h-12 rounded-xl flex flex-col items-center justify-center text-xs transition-colors text-slate-300 ${
+              className={`h-11 sm:h-12 rounded-xl flex flex-col items-center justify-center text-xs transition-colors ${
+                isWeekend ? 'bg-amber-50/20 text-slate-300' : 'bg-purple-50/15 text-slate-300'
+              } ${
                 disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer hover:bg-purple-50/50'
               }`}
             >
@@ -304,28 +393,110 @@ export default function InteractiveCalendar({
         })}
       </div>
 
-      {/* Selected Date Summary bar at the bottom */}
-      <div className="mt-4 pt-3 border-t border-purple-50 flex flex-wrap items-center justify-between gap-2 text-xs">
-        <div className="flex items-center gap-1.5 text-slate-600">
-          <span className="font-semibold text-slate-500">Избрана дата:</span>
-          {selectedDate ? (
-            <span className="font-bold text-purple-900 bg-purple-50 px-2 py-0.5 rounded-lg border border-purple-100">
-              {formatBulgarianDate(selectedDate)}
-            </span>
-          ) : (
-            <span className="italic text-slate-400">Всички дати</span>
-          )}
+      {/* Selected Date Summary & Explanations */}
+      {selectedDate && (
+        <div className="mt-3.5 pt-3 border-t border-purple-100 space-y-2">
+          {(() => {
+            const selectedDayOff = getDayOffForDate(selectedDate, daysOff);
+            const selDateObj = new Date(selectedDate);
+            const selDayOfWeek = (selDateObj.getDay() + 6) % 7;
+            const isSelWeekend = selDayOfWeek === 5 || selDayOfWeek === 6;
+
+            if (selectedDayOff) {
+              return (
+                <div className="bg-rose-50 border-2 border-rose-300 rounded-2xl p-2.5 sm:p-3 text-rose-950 flex items-center gap-2.5 shadow-2xs">
+                  <span className="text-xl shrink-0">🏖️</span>
+                  <div className="text-xs min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-black text-rose-900 uppercase tracking-wide text-[10px] bg-rose-200 px-1.5 py-0.2 rounded-md">
+                        Период на отпуск
+                      </span>
+                      <span className="font-extrabold text-rose-950">
+                        {formatBulgarianDate(selectedDate)}
+                      </span>
+                    </div>
+                    <p className="font-bold text-rose-900 mt-0.5 leading-snug">
+                      Основание: {selectedDayOff.reason}
+                    </p>
+                    <p className="text-[11px] text-rose-700/90 mt-0.5">
+                      Период: {formatBulgarianDate(selectedDayOff.start_date)} –{' '}
+                      {formatBulgarianDate(selectedDayOff.end_date)}. Моля, изберете работен ден извън този интервал.
+                    </p>
+                  </div>
+                </div>
+              );
+            }
+
+            if (isSelWeekend) {
+              return (
+                <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-2.5 sm:p-3 text-amber-950 flex items-center gap-2.5 shadow-2xs">
+                  <span className="text-xl shrink-0">☀️</span>
+                  <div className="text-xs min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-black text-amber-900 uppercase tracking-wide text-[10px] bg-amber-200 px-1.5 py-0.2 rounded-md">
+                        Почивен ден
+                      </span>
+                      <span className="font-extrabold text-amber-950">
+                        {formatBulgarianDate(selectedDate)} (уикенд)
+                      </span>
+                    </div>
+                    <p className="text-amber-900 font-semibold mt-0.5">
+                      Кабинетът на Д-р Джанел Аяз приема пациенти от понеделник до петък. Моля, изберете делничен ден за преглед.
+                    </p>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div className="flex items-center justify-between gap-2 text-xs flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-500">Избрана дата за преглед:</span>
+                  <span className="font-black text-purple-950 bg-purple-100/90 px-2.5 py-1 rounded-xl border border-purple-200 shadow-2xs">
+                    {formatBulgarianDate(selectedDate)}
+                  </span>
+                </div>
+
+                {variant === 'admin' && onClearFilter && (
+                  <button
+                    type="button"
+                    onClick={() => onSelectDate('')}
+                    className="text-[11px] text-purple-700 hover:text-purple-950 font-black underline cursor-pointer"
+                  >
+                    Изчисти филтъра
+                  </button>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* Visual Color Legend (Легенда за цветовете) */}
+      <div className="mt-3.5 pt-3 border-t border-purple-100 flex items-center gap-2.5 sm:gap-4 flex-wrap text-[10px] sm:text-[11px] font-semibold text-purple-950">
+        <span className="text-purple-400 font-black">Легенда:</span>
+
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-md bg-white border-2 border-purple-200" />
+          <span className="text-purple-950 font-bold">Работен ден</span>
         </div>
 
-        {selectedDate && (
-          <button
-            type="button"
-            onClick={() => onSelectDate('')}
-            className="text-[11px] text-purple-700 hover:text-purple-900 font-bold underline"
-          >
-            Изчисти филтъра
-          </button>
-        )}
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-md bg-amber-100 border border-amber-400" />
+          <span className="text-amber-950 font-black">Уикенд (Сб / Нд)</span>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-md bg-rose-100 border border-rose-400 relative overflow-hidden flex items-center justify-center text-[8px] font-black text-rose-700">
+            ✕
+          </span>
+          <span className="text-rose-950 font-black">Отпуск / Почивен ден</span>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-md bg-purple-700 ring-2 ring-purple-300" />
+          <span className="text-purple-950 font-black">Днес / Избран</span>
+        </div>
       </div>
     </div>
   );
