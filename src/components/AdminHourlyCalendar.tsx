@@ -25,7 +25,6 @@ import {
   Sun,
   Sunset,
   X,
-  Sparkles,
   Info,
   CheckCheck,
 } from 'lucide-react';

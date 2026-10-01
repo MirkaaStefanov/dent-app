@@ -52,7 +52,6 @@ import {
   Search,
   Check,
   AlertTriangle,
-  Sparkles,
   Euro,
   Users,
   ShieldCheck,
@@ -162,8 +161,8 @@ export default function AdminPage() {
   }, []);
 
   // Зареждане на всички данни
-  const fetchAllData = async () => {
-    setIsLoading(true);
+  const fetchAllData = async (showSpinner = false) => {
+    if (showSpinner) setIsLoading(true);
     try {
       const [apts, srvs, hrs, doff, setts] = await Promise.all([
         getAppointments(),
@@ -183,20 +182,20 @@ export default function AdminPage() {
     } catch (err) {
       console.error('Error fetching admin data:', err);
     } finally {
-      setIsLoading(false);
+      if (showSpinner) setIsLoading(false);
     }
   };
 
   useEffect(() => {
     if (isAuthenticated) {
-      fetchAllData();
+      fetchAllData(true);
 
       const handleUpdate = () => {
-        fetchAllData();
+        fetchAllData(false);
       };
 
       window.addEventListener('dent_data_updated', handleUpdate);
-      const interval = setInterval(fetchAllData, 10000); // auto-sync new appointments every 10s
+      const interval = setInterval(() => fetchAllData(false), 30000); // auto-sync new appointments silently every 30s
 
       return () => {
         window.removeEventListener('dent_data_updated', handleUpdate);
@@ -256,13 +255,13 @@ export default function AdminPage() {
     setAdminUser(null);
   };
 
-  // Промяна на статус на час
+  // Промяна на статус на час (мигновена реакция)
   const handleStatusChange = async (aptId: string, newStatus: AppointmentStatus) => {
-    await updateAppointmentStatus(aptId, newStatus);
     setAppointments((prev) =>
       prev.map((a) => (a.id === aptId ? { ...a, status: newStatus } : a))
     );
     showToast(`Статусът на часа е променен на "${newStatus === 'completed' ? 'Приключил' : newStatus === 'cancelled' ? 'Отменен' : 'Потвърден'}"`);
+    await updateAppointmentStatus(aptId, newStatus);
   };
 
   // Изпращане на напомняне и копиране на съобщение за Viber/SMS
@@ -375,28 +374,27 @@ export default function AdminPage() {
     }
   };
 
-  // Превключване на активност на услуга
+  // Превключване на активност на услуга (мигновена реакция)
   const handleToggleServiceActive = async (service: Service) => {
-    const updated = await updateService(service.id, { is_active: !service.is_active });
-    if (updated) {
-      setServices((prev) => prev.map((s) => (s.id === service.id ? updated : s)));
-      showToast(`Услугата е ${updated.is_active ? 'активирана' : 'скрита'}.`);
-    }
+    const nextActive = !service.is_active;
+    setServices((prev) =>
+      prev.map((s) => (s.id === service.id ? { ...s, is_active: nextActive } : s))
+    );
+    showToast(`Услугата е ${nextActive ? 'активирана' : 'скрита'}.`);
+    await updateService(service.id, { is_active: nextActive });
   };
 
-  // Запазване на промени по работното време
+  // Запазване на промени по работното време (мигновена реакция)
   const handleWorkingHourChange = async (
     dayOfWeek: DayOfWeek,
     field: keyof WorkingHour,
     value: any
   ) => {
-    const updated = await updateWorkingHour(dayOfWeek, { [field]: value });
-    if (updated) {
-      setWorkingHours((prev) =>
-        prev.map((wh) => (wh.day_of_week === dayOfWeek ? updated : wh))
-      );
-      showToast(`Работното време за ${updated.day_name} беше обновено.`);
-    }
+    setWorkingHours((prev) =>
+      prev.map((wh) => (wh.day_of_week === dayOfWeek ? { ...wh, [field]: value } : wh))
+    );
+    showToast(`Работното време беше обновено.`);
+    await updateWorkingHour(dayOfWeek, { [field]: value });
   };
 
   // Обявяване на неработен ден / отпуск

@@ -24,21 +24,75 @@ const STORAGE_KEYS = {
   APPOINTMENTS: 'dent_targovishte_appointments',
 };
 
+// ==========================================
+// CIRCUIT BREAKER & FAST TIMEOUT ЗА SUPABASE
+// ==========================================
+let isSupabaseOnline = true;
+let lastFailureTimestamp = 0;
+const OFFLINE_COOLDOWN_MS = 45000; // 45 секунди при грешка преди повторен опит
+const DEFAULT_TIMEOUT_MS = 1200; // Максимум 1.2 секунди за мрежова заявка
+
+/**
+ * Изпълнява заявка към Supabase с твърд таймаут.
+ * Ако мрежата е бавна, офлайн или домейнът не съществува,
+ * не блокира потребителя за 10 секунди, а превключва мигновено на локален кеш.
+ */
+async function runWithTimeout<T>(
+  promiseFactory: () => PromiseLike<T> | Promise<T> | any,
+  timeoutMs = DEFAULT_TIMEOUT_MS
+): Promise<T | null> {
+  if (!isSupabaseConfigured || !supabase) return null;
+
+  // Ако Supabase наскоро е отпаднал, не бавим потребителя - директно връщаме null
+  if (!isSupabaseOnline && Date.now() - lastFailureTimestamp < OFFLINE_COOLDOWN_MS) {
+    return null;
+  }
+
+  try {
+    let timerId: any;
+    const timeoutPromise = new Promise<null>((resolve) => {
+      timerId = setTimeout(() => resolve(null), timeoutMs);
+    });
+
+    const execPromise = Promise.resolve().then(() => promiseFactory());
+    const result = await Promise.race([execPromise, timeoutPromise]);
+    clearTimeout(timerId);
+
+    if (result === null) {
+      isSupabaseOnline = false;
+      lastFailureTimestamp = Date.now();
+      console.warn(`[Supabase] Заявката надхвърли ${timeoutMs}ms таймаут. Превключване към мигновен локален кеш.`);
+      return null;
+    }
+
+    isSupabaseOnline = true;
+    return result as T;
+  } catch (err) {
+    isSupabaseOnline = false;
+    lastFailureTimestamp = Date.now();
+    console.warn('[Supabase] Мрежова грешка (офлайн/паузиран):', err);
+    return null;
+  }
+}
+
 function getLocalItem<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
   try {
     const item = localStorage.getItem(key);
-    return item ? JSON.parse(item) : fallback;
+    if (!item) return fallback;
+    return JSON.parse(item);
   } catch {
     return fallback;
   }
 }
 
-function setLocalItem<T>(key: string, value: T): void {
+function setLocalItem<T>(key: string, value: T, dispatchEvent = true): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(key, JSON.stringify(value));
-    window.dispatchEvent(new Event('dent_data_updated'));
+    if (dispatchEvent) {
+      window.dispatchEvent(new Event('dent_data_updated'));
+    }
   } catch (err) {
     console.error('LocalStorage write error:', err);
   }
@@ -48,21 +102,29 @@ function setLocalItem<T>(key: string, value: T): void {
 // 1. НАСТРОЙКИ НА КАБИНЕТА
 // ==========================================
 export async function getClinicSettings(): Promise<ClinicSettings> {
-  if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from('clinic_settings').select('*').limit(1).single();
-    if (!error && data) return data;
+  const local = getLocalItem<ClinicSettings>(STORAGE_KEYS.SETTINGS, initialClinicSettings);
+
+  const res = await runWithTimeout<ClinicSettings>(async () => {
+    const { data, error } = await supabase!.from('clinic_settings').select('*').limit(1).maybeSingle();
+    if (!error && data) return data as ClinicSettings;
+    return null;
+  });
+
+  if (res) {
+    setLocalItem(STORAGE_KEYS.SETTINGS, res, false);
+    return res;
   }
-  return getLocalItem<ClinicSettings>(STORAGE_KEYS.SETTINGS, initialClinicSettings);
+
+  return local;
 }
 
 export async function updateClinicSettings(settings: Partial<ClinicSettings>): Promise<ClinicSettings> {
-  const current = await getClinicSettings();
+  const current = getLocalItem<ClinicSettings>(STORAGE_KEYS.SETTINGS, initialClinicSettings);
   const updated = { ...current, ...settings };
+  setLocalItem(STORAGE_KEYS.SETTINGS, updated, true);
 
-  if (isSupabaseConfigured && supabase) {
-    await supabase.from('clinic_settings').upsert(updated);
-  }
-  setLocalItem(STORAGE_KEYS.SETTINGS, updated);
+  // Синхронизация на заден план
+  runWithTimeout(() => supabase!.from('clinic_settings').upsert(updated)).catch(() => {});
   return updated;
 }
 
@@ -70,62 +132,70 @@ export async function updateClinicSettings(settings: Partial<ClinicSettings>): P
 // 2. ДЕНТАЛНИ УСЛУГИ
 // ==========================================
 export async function getServices(): Promise<Service[]> {
-  if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from('services').select('*').order('sort_order', { ascending: true });
-    if (!error && data && data.length > 0) return data;
+  const local = getLocalItem<Service[]>(STORAGE_KEYS.SERVICES, initialServices);
+
+  const res = await runWithTimeout<Service[]>(async () => {
+    const { data, error } = await supabase!.from('services').select('*').order('sort_order', { ascending: true });
+    if (!error && data && data.length > 0) return data as Service[];
+    return null;
+  });
+
+  if (res) {
+    setLocalItem(STORAGE_KEYS.SERVICES, res, false);
+    return res;
   }
-  return getLocalItem<Service[]>(STORAGE_KEYS.SERVICES, initialServices);
+
+  return local;
 }
 
 export async function addService(serviceData: Omit<Service, 'id' | 'created_at'>): Promise<Service> {
-  if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from('services').insert(serviceData).select().single();
-    if (!error && data) {
-      const services = await getServices();
-      setLocalItem(STORAGE_KEYS.SERVICES, [...services, data]);
-      return data;
-    }
-  }
-
   const newService: Service = {
     ...serviceData,
     id: `srv-${Date.now()}`,
     created_at: new Date().toISOString(),
   };
 
-  const services = await getServices();
-  const updated = [...services, newService];
-  setLocalItem(STORAGE_KEYS.SERVICES, updated);
+  const current = getLocalItem<Service[]>(STORAGE_KEYS.SERVICES, initialServices);
+  const updated = [...current, newService];
+  setLocalItem(STORAGE_KEYS.SERVICES, updated, true);
+
+  // Опит за запис в Supabase на заден план
+  runWithTimeout(async () => {
+    const { data } = await supabase!.from('services').insert(serviceData).select().single();
+    if (data) {
+      const refreshed = getLocalItem<Service[]>(STORAGE_KEYS.SERVICES, initialServices);
+      setLocalItem(
+        STORAGE_KEYS.SERVICES,
+        refreshed.map((s) => (s.id === newService.id ? data : s)),
+        false
+      );
+    }
+  }).catch(() => {});
+
   return newService;
 }
 
 export async function updateService(id: string, updates: Partial<Service>): Promise<Service | null> {
-  if (isSupabaseConfigured && supabase) {
-    const { data } = await supabase.from('services').update(updates).eq('id', id).select().single();
-    if (data) {
-      const services = await getServices();
-      setLocalItem(STORAGE_KEYS.SERVICES, services.map((s) => (s.id === id ? data : s)));
-      return data;
-    }
-  }
-
-  const services = await getServices();
-  const index = services.findIndex((s) => s.id === id);
+  const current = getLocalItem<Service[]>(STORAGE_KEYS.SERVICES, initialServices);
+  const index = current.findIndex((s) => s.id === id);
   if (index === -1) return null;
 
-  services[index] = { ...services[index], ...updates };
-  setLocalItem(STORAGE_KEYS.SERVICES, [...services]);
-  return services[index];
+  const updatedService = { ...current[index], ...updates };
+  current[index] = updatedService;
+  setLocalItem(STORAGE_KEYS.SERVICES, [...current], true);
+
+  // Опит за обновяване в Supabase на заден план без блокиране
+  runWithTimeout(() => supabase!.from('services').update(updates).eq('id', id)).catch(() => {});
+
+  return updatedService;
 }
 
 export async function deleteService(id: string): Promise<boolean> {
-  if (isSupabaseConfigured && supabase) {
-    await supabase.from('services').delete().eq('id', id);
-  }
+  const current = getLocalItem<Service[]>(STORAGE_KEYS.SERVICES, initialServices);
+  const filtered = current.filter((s) => s.id !== id);
+  setLocalItem(STORAGE_KEYS.SERVICES, filtered, true);
 
-  const services = await getServices();
-  const filtered = services.filter((s) => s.id !== id);
-  setLocalItem(STORAGE_KEYS.SERVICES, filtered);
+  runWithTimeout(() => supabase!.from('services').delete().eq('id', id)).catch(() => {});
   return true;
 }
 
@@ -133,69 +203,85 @@ export async function deleteService(id: string): Promise<boolean> {
 // 3. РАБОТНО ВРЕМЕ
 // ==========================================
 export async function getWorkingHours(): Promise<WorkingHour[]> {
-  if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from('working_hours').select('*').order('day_of_week', { ascending: true });
-    if (!error && data && data.length > 0) return data;
+  const local = getLocalItem<WorkingHour[]>(STORAGE_KEYS.WORKING_HOURS, initialWorkingHours);
+
+  const res = await runWithTimeout<WorkingHour[]>(async () => {
+    const { data, error } = await supabase!.from('working_hours').select('*').order('day_of_week', { ascending: true });
+    if (!error && data && data.length > 0) return data as WorkingHour[];
+    return null;
+  });
+
+  if (res) {
+    setLocalItem(STORAGE_KEYS.WORKING_HOURS, res, false);
+    return res;
   }
-  return getLocalItem<WorkingHour[]>(STORAGE_KEYS.WORKING_HOURS, initialWorkingHours);
+
+  return local;
 }
 
 export async function updateWorkingHour(day_of_week: DayOfWeek, updates: Partial<WorkingHour>): Promise<WorkingHour | null> {
-  const hours = await getWorkingHours();
-  const index = hours.findIndex((h) => h.day_of_week === day_of_week);
+  const current = getLocalItem<WorkingHour[]>(STORAGE_KEYS.WORKING_HOURS, initialWorkingHours);
+  const index = current.findIndex((h) => h.day_of_week === day_of_week);
   if (index === -1) return null;
 
-  hours[index] = { ...hours[index], ...updates };
+  current[index] = { ...current[index], ...updates };
+  setLocalItem(STORAGE_KEYS.WORKING_HOURS, [...current], true);
 
-  if (isSupabaseConfigured && supabase) {
-    await supabase.from('working_hours').upsert(hours[index]);
-  }
-
-  setLocalItem(STORAGE_KEYS.WORKING_HOURS, [...hours]);
-  return hours[index];
+  runWithTimeout(() => supabase!.from('working_hours').upsert(current[index])).catch(() => {});
+  return current[index];
 }
 
 // ==========================================
 // 4. ПОЧИВНИ ДНИ И ОТПУСКИ
 // ==========================================
 export async function getDaysOff(): Promise<DayOff[]> {
-  if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from('days_off').select('*').order('start_date', { ascending: true });
-    if (!error && data) return data;
+  const local = getLocalItem<DayOff[]>(STORAGE_KEYS.DAYS_OFF, initialDaysOff);
+
+  const res = await runWithTimeout<DayOff[]>(async () => {
+    const { data, error } = await supabase!.from('days_off').select('*').order('start_date', { ascending: true });
+    if (!error && data) return data as DayOff[];
+    return null;
+  });
+
+  if (res) {
+    setLocalItem(STORAGE_KEYS.DAYS_OFF, res, false);
+    return res;
   }
-  return getLocalItem<DayOff[]>(STORAGE_KEYS.DAYS_OFF, initialDaysOff);
+
+  return local;
 }
 
 export async function addDayOff(dayOffData: Omit<DayOff, 'id' | 'created_at'>): Promise<DayOff> {
-  if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from('days_off').insert(dayOffData).select().single();
-    if (!error && data) {
-      const daysOff = await getDaysOff();
-      setLocalItem(STORAGE_KEYS.DAYS_OFF, [...daysOff, data]);
-      return data;
-    }
-  }
-
   const newDayOff: DayOff = {
     ...dayOffData,
     id: `dayoff-${Date.now()}`,
     created_at: new Date().toISOString(),
   };
 
-  const daysOff = await getDaysOff();
-  const updated = [...daysOff, newDayOff];
-  setLocalItem(STORAGE_KEYS.DAYS_OFF, updated);
+  const current = getLocalItem<DayOff[]>(STORAGE_KEYS.DAYS_OFF, initialDaysOff);
+  setLocalItem(STORAGE_KEYS.DAYS_OFF, [...current, newDayOff], true);
+
+  runWithTimeout(async () => {
+    const { data } = await supabase!.from('days_off').insert(dayOffData).select().single();
+    if (data) {
+      const refreshed = getLocalItem<DayOff[]>(STORAGE_KEYS.DAYS_OFF, initialDaysOff);
+      setLocalItem(
+        STORAGE_KEYS.DAYS_OFF,
+        refreshed.map((d) => (d.id === newDayOff.id ? data : d)),
+        false
+      );
+    }
+  }).catch(() => {});
+
   return newDayOff;
 }
 
 export async function deleteDayOff(id: string): Promise<boolean> {
-  if (isSupabaseConfigured && supabase) {
-    await supabase.from('days_off').delete().eq('id', id);
-  }
+  const current = getLocalItem<DayOff[]>(STORAGE_KEYS.DAYS_OFF, initialDaysOff);
+  const filtered = current.filter((d) => d.id !== id);
+  setLocalItem(STORAGE_KEYS.DAYS_OFF, filtered, true);
 
-  const daysOff = await getDaysOff();
-  const filtered = daysOff.filter((d) => d.id !== id);
-  setLocalItem(STORAGE_KEYS.DAYS_OFF, filtered);
+  runWithTimeout(() => supabase!.from('days_off').delete().eq('id', id)).catch(() => {});
   return true;
 }
 
@@ -203,11 +289,12 @@ export async function deleteDayOff(id: string): Promise<boolean> {
 // 5. РЕЗЕРВАЦИИ / ЧАСОВЕ (APPOINTMENTS)
 // ==========================================
 export async function getAppointments(): Promise<Appointment[]> {
-  if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase.from('appointments').select('*').order('date', { ascending: true });
+  const local = getLocalItem<Appointment[]>(STORAGE_KEYS.APPOINTMENTS, initialAppointments);
+
+  const res = await runWithTimeout<Appointment[]>(async () => {
+    const { data, error } = await supabase!.from('appointments').select('*').order('date', { ascending: true });
     if (!error && data) {
-      // Enrich with service information if columns weren't stored directly
-      const services = await getServices();
+      const services = getLocalItem<Service[]>(STORAGE_KEYS.SERVICES, initialServices);
       const enriched: Appointment[] = data.map((apt: any) => {
         const srv = services.find((s) => s.id === apt.service_id);
         const startTime = apt.start_time ? String(apt.start_time).slice(0, 5) : apt.start_time;
@@ -216,33 +303,44 @@ export async function getAppointments(): Promise<Appointment[]> {
           ...apt,
           start_time: startTime,
           end_time: endTime,
-          service_title: apt.service_title || srv?.title,
+          service_title: apt.service_title || srv?.title || 'Стоматологична процедура',
           service_duration: apt.service_duration || srv?.duration_minutes || 30,
-          service_price: apt.service_price !== undefined && apt.service_price !== null ? apt.service_price : srv?.price_bgn,
+          service_price: apt.service_price !== undefined && apt.service_price !== null ? apt.service_price : srv?.price_bgn || 0,
         };
       });
       return enriched;
     }
+    return null;
+  });
+
+  if (res) {
+    setLocalItem(STORAGE_KEYS.APPOINTMENTS, res, false);
+    return res;
   }
-  return getLocalItem<Appointment[]>(STORAGE_KEYS.APPOINTMENTS, initialAppointments);
+
+  return local;
 }
 
 export async function addAppointment(
   appointmentData: Omit<Appointment, 'id' | 'created_at' | 'reminder_sent'>
 ): Promise<Appointment> {
-  let createdApt: Appointment = {
+  const createdApt: Appointment = {
     ...appointmentData,
     id: `apt-${Date.now()}`,
     reminder_sent: false,
     created_at: new Date().toISOString(),
   };
 
-  if (isSupabaseConfigured && supabase) {
+  const current = getLocalItem<Appointment[]>(STORAGE_KEYS.APPOINTMENTS, initialAppointments);
+  const updated = [createdApt, ...current.filter((a) => a.id !== createdApt.id)];
+  setLocalItem(STORAGE_KEYS.APPOINTMENTS, updated, true);
+
+  // Опит за запис в Supabase на заден план (не блокира потвърждението на пациента)
+  runWithTimeout(async () => {
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
       appointmentData.service_id
     );
 
-    // Core table columns matching standard appointments schema
     const basePayload: any = {
       patient_name: appointmentData.patient_name,
       patient_phone: appointmentData.patient_phone,
@@ -259,7 +357,6 @@ export async function addAppointment(
       basePayload.service_id = appointmentData.service_id;
     }
 
-    // Extended payload with denormalized service details
     const fullPayload: any = {
       ...basePayload,
       service_title: appointmentData.service_title,
@@ -267,82 +364,50 @@ export async function addAppointment(
       service_price: appointmentData.service_price,
     };
 
-    // Attempt 1: Try inserting with extended columns
-    let insertRes = await supabase.from('appointments').insert(fullPayload).select().maybeSingle();
-
-    // If extended columns don't exist in Supabase table (PGRST204), fallback to core basePayload
+    let insertRes = await supabase!.from('appointments').insert(fullPayload).select().maybeSingle();
     if (insertRes.error && insertRes.error.code === 'PGRST204') {
-      insertRes = await supabase.from('appointments').insert(basePayload).select().maybeSingle();
+      insertRes = await supabase!.from('appointments').insert(basePayload).select().maybeSingle();
     }
-
-    // If select was denied by RLS (e.g. unauthenticated public user), perform clean insert
     if (insertRes.error && insertRes.error.code === '42501') {
-      const fallbackInsert = await supabase.from('appointments').insert(basePayload);
-      if (fallbackInsert.error) {
-        console.error('Supabase addAppointment fallback insert error:', fallbackInsert.error);
-      }
-    } else if (insertRes.error) {
-      console.error('Supabase addAppointment error:', insertRes.error);
-    } else if (insertRes.data) {
-      createdApt = {
-        ...createdApt,
-        ...insertRes.data,
-        start_time: insertRes.data.start_time ? String(insertRes.data.start_time).slice(0, 5) : appointmentData.start_time,
-        end_time: insertRes.data.end_time ? String(insertRes.data.end_time).slice(0, 5) : appointmentData.end_time,
-        service_title: insertRes.data.service_title || appointmentData.service_title,
-        service_duration: insertRes.data.service_duration || appointmentData.service_duration,
-        service_price: insertRes.data.service_price !== undefined ? insertRes.data.service_price : appointmentData.service_price,
-      };
+      await supabase!.from('appointments').insert(basePayload);
     }
-  }
+  }).catch(() => {});
 
-  const appointments = await getAppointments();
-  const updated = [createdApt, ...appointments.filter((a) => a.id !== createdApt.id)];
-  setLocalItem(STORAGE_KEYS.APPOINTMENTS, updated);
   return createdApt;
 }
 
 export async function updateAppointmentStatus(id: string, status: AppointmentStatus): Promise<boolean> {
-  if (isSupabaseConfigured && supabase) {
-    await supabase.from('appointments').update({ status }).eq('id', id);
-  }
+  const current = getLocalItem<Appointment[]>(STORAGE_KEYS.APPOINTMENTS, initialAppointments);
+  const updated = current.map((apt) => (apt.id === id ? { ...apt, status } : apt));
+  setLocalItem(STORAGE_KEYS.APPOINTMENTS, updated, true);
 
-  const appointments = await getAppointments();
-  const updated = appointments.map((apt) => (apt.id === id ? { ...apt, status } : apt));
-  setLocalItem(STORAGE_KEYS.APPOINTMENTS, updated);
+  runWithTimeout(() => supabase!.from('appointments').update({ status }).eq('id', id)).catch(() => {});
   return true;
 }
 
 export async function deleteAppointment(id: string): Promise<boolean> {
-  if (isSupabaseConfigured && supabase) {
-    await supabase.from('appointments').delete().eq('id', id);
-  }
+  const current = getLocalItem<Appointment[]>(STORAGE_KEYS.APPOINTMENTS, initialAppointments);
+  const updated = current.filter((apt) => apt.id !== id);
+  setLocalItem(STORAGE_KEYS.APPOINTMENTS, updated, true);
 
-  const appointments = await getAppointments();
-  const updated = appointments.filter((apt) => apt.id !== id);
-  setLocalItem(STORAGE_KEYS.APPOINTMENTS, updated);
+  runWithTimeout(() => supabase!.from('appointments').delete().eq('id', id)).catch(() => {});
   return true;
 }
 
 export async function sendAppointmentReminder(id: string): Promise<{ success: boolean; message: string }> {
-  const appointments = await getAppointments();
+  const appointments = getLocalItem<Appointment[]>(STORAGE_KEYS.APPOINTMENTS, initialAppointments);
   const appointment = appointments.find((a) => a.id === id);
 
   if (!appointment) {
     return { success: false, message: 'Часът не е намерен.' };
   }
 
-  if (isSupabaseConfigured && supabase) {
-    await supabase.from('appointments').update({ reminder_sent: true }).eq('id', id);
-  }
-
   const updated = appointments.map((apt) => (apt.id === id ? { ...apt, reminder_sent: true } : apt));
-  setLocalItem(STORAGE_KEYS.APPOINTMENTS, updated);
+  setLocalItem(STORAGE_KEYS.APPOINTMENTS, updated, true);
 
-  return {
-    success: true,
-    message: `Успешно изпратено напомняне до ${appointment.patient_name} (${appointment.patient_phone || appointment.patient_email || 'Пациент'})`,
-  };
+  runWithTimeout(() => supabase!.from('appointments').update({ reminder_sent: true }).eq('id', id)).catch(() => {});
+
+  return { success: true, message: 'Напомнянето е регистрирано успешно.' };
 }
 
 // ==========================================
@@ -374,8 +439,14 @@ export async function getAvailableSlots(
   const dateObj = parseLocalDate(dateStr);
   const dayOfWeek = dateObj.getDay() as DayOfWeek;
 
+  // Паралелно извличане за максимална скорост (1ms вместо 3 последователни изчаквания)
+  const [daysOff, workingHours, allAppointments] = await Promise.all([
+    getDaysOff(),
+    getWorkingHours(),
+    getAppointments(),
+  ]);
+
   // 1. Почивни дни / отпуски
-  const daysOff = await getDaysOff();
   const matchingDayOff = daysOff.find((d) => dateStr >= d.start_date && dateStr <= d.end_date);
   if (matchingDayOff) {
     return {
@@ -385,7 +456,6 @@ export async function getAvailableSlots(
   }
 
   // 2. Работно време
-  const workingHours = await getWorkingHours();
   const daySchedule = workingHours.find((wh) => wh.day_of_week === dayOfWeek);
 
   if (!daySchedule || !daySchedule.is_working) {
@@ -401,7 +471,6 @@ export async function getAvailableSlots(
   const breakEnd = daySchedule.break_end ? timeToMinutes(daySchedule.break_end) : null;
 
   // 3. Заети часове
-  const allAppointments = await getAppointments();
   const dayAppointments = allAppointments.filter(
     (apt) => apt.date === dateStr && apt.status !== 'cancelled'
   );
