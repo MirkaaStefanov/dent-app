@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Service, Appointment } from '@/types/database';
-import { getAvailableSlots, addAppointment } from '@/lib/storage';
+import { Service, Appointment, DayOff } from '@/types/database';
+import { getAvailableSlots, addAppointment, getDaysOff } from '@/lib/storage';
 import { formatBulgarianDate } from '@/lib/notifications';
 import confetti from 'canvas-confetti';
 import { 
@@ -43,6 +43,7 @@ export default function BookingSection({
   const [unavailableReason, setUnavailableReason] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [isLoadingSlots, setIsLoadingSlots] = useState<boolean>(false);
+  const [daysOff, setDaysOff] = useState<DayOff[]>([]);
 
   // Form inputs
   const [patientName, setPatientName] = useState('');
@@ -53,6 +54,21 @@ export default function BookingSection({
 
   // Booked appointment
   const [bookedAppointment, setBookedAppointment] = useState<Appointment | null>(null);
+
+  // Load days off
+  useEffect(() => {
+    async function loadDaysOff() {
+      try {
+        const fetched = await getDaysOff();
+        if (fetched) {
+          setDaysOff(fetched);
+        }
+      } catch (err) {
+        console.error('Failed to load days off:', err);
+      }
+    }
+    loadDaysOff();
+  }, []);
 
   // When selectedService is picked from outside (Services section)
   // advance to Step 2 smoothly
@@ -86,17 +102,21 @@ export default function BookingSection({
     loadSlots();
   }, [selectedDate, selectedService]);
 
-  // Next 7 days for quick date swipe
+  // Next 7 days for quick date swipe with weekend and vacation flags
   const quickDates = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() + i);
     const dateStr = d.toISOString().split('T')[0];
     const dayNames = ['Нед', 'Пон', 'Вто', 'Сря', 'Чет', 'Пет', 'Съб'];
+    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+    const matchingDayOff = daysOff.find((doff) => dateStr >= doff.start_date && dateStr <= doff.end_date);
     return {
       dateStr,
       dayName: i === 0 ? 'Днес' : i === 1 ? 'Утре' : dayNames[d.getDay()],
       dayNumber: d.getDate(),
       monthNumber: d.getMonth() + 1,
+      isWeekend,
+      dayOff: matchingDayOff,
     };
   });
 
@@ -442,12 +462,13 @@ export default function BookingSection({
                   minDate={todayStr}
                   variant="booking"
                   title="Календар за избор на дата"
+                  daysOff={daysOff}
                 />
               </div>
 
               {/* Horizontal Scrollable Days Strip on Mobile (Отдолу както е сега) */}
               <div className="mb-5">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-bold text-purple-700 uppercase tracking-wider mb-2">
                   Бърз избор на ден:
                 </label>
                 
@@ -459,19 +480,74 @@ export default function BookingSection({
                         key={item.dateStr}
                         type="button"
                         onClick={() => setSelectedDate(item.dateStr)}
-                        className={`p-3 rounded-2xl text-center transition-all flex flex-col items-center justify-center border shrink-0 w-19 sm:w-21 ${
+                        title={
+                          item.dayOff
+                            ? `Почивен ден / Отпуск: ${item.dayOff.reason}`
+                            : item.isWeekend
+                            ? 'Уикенд (събота/неделя)'
+                            : undefined
+                        }
+                        className={`p-3 rounded-2xl text-center transition-all flex flex-col items-center justify-center border-2 shrink-0 w-19 sm:w-22 relative overflow-hidden cursor-pointer ${
                           isSelected
-                            ? 'bg-purple-700 text-white border-purple-700 shadow-sm'
-                            : 'bg-white text-slate-700 border-slate-200 hover:border-purple-200 active:bg-purple-50/50'
+                            ? 'bg-linear-to-r from-purple-700 to-violet-800 text-white border-purple-800 shadow-md shadow-purple-900/15 scale-[1.02] z-10'
+                            : item.dayOff
+                            ? 'bg-rose-50/90 text-rose-950 border-rose-300 hover:border-rose-400 hover:bg-rose-100/80 shadow-2xs'
+                            : item.isWeekend
+                            ? 'bg-amber-50/80 text-amber-950 border-amber-200 hover:border-amber-300 hover:bg-amber-100/80 shadow-2xs'
+                            : 'bg-white text-purple-950 border-purple-100 hover:border-purple-300 hover:bg-purple-50/40'
                         }`}
                       >
-                        <span className={`text-[11px] font-bold ${isSelected ? 'text-purple-100' : 'text-slate-500'}`}>
-                          {item.dayName}
-                        </span>
-                        <span className="text-lg font-extrabold mt-0.5">
+                        {/* SVG Cross-Hatch for Day Off in Quick Dates */}
+                        {item.dayOff && (
+                          <svg className="absolute inset-0 w-full h-full pointer-events-none stroke-rose-400/50" preserveAspectRatio="none">
+                            <line x1="0" y1="0" x2="100%" y2="100%" strokeWidth="1.5" strokeDasharray="3 2" />
+                            <line x1="100%" y1="0" x2="0" y2="100%" strokeWidth="1.5" strokeDasharray="3 2" />
+                          </svg>
+                        )}
+                        <div className="flex items-center gap-1 leading-none z-10 relative">
+                          <span
+                            className={`text-[11px] font-extrabold ${
+                              isSelected
+                                ? 'text-purple-200'
+                                : item.dayOff
+                                ? 'text-rose-900'
+                                : item.isWeekend
+                                ? 'text-amber-900'
+                                : 'text-slate-500'
+                            }`}
+                          >
+                            {item.dayName}
+                          </span>
+                          {item.dayOff ? (
+                            <span className="text-[10px]">🏖️</span>
+                          ) : item.isWeekend ? (
+                            <span className="text-[10px]">☀️</span>
+                          ) : null}
+                        </div>
+                        <span
+                          className={`text-lg font-black mt-0.5 z-10 relative ${
+                            isSelected
+                              ? 'text-white'
+                              : item.dayOff
+                              ? 'text-rose-950'
+                              : item.isWeekend
+                              ? 'text-amber-950'
+                              : 'text-slate-900'
+                          }`}
+                        >
                           {item.dayNumber}
                         </span>
-                        <span className={`text-[10px] ${isSelected ? 'text-purple-200' : 'text-slate-400'}`}>
+                        <span
+                          className={`text-[10px] font-bold z-10 relative ${
+                            isSelected
+                              ? 'text-purple-200'
+                              : item.dayOff
+                              ? 'text-rose-700'
+                              : item.isWeekend
+                              ? 'text-amber-700'
+                              : 'text-slate-400'
+                          }`}
+                        >
                           .{String(item.monthNumber).padStart(2, '0')}
                         </span>
                       </button>
@@ -480,22 +556,22 @@ export default function BookingSection({
                 </div>
 
                 {/* Calendar picker for later dates */}
-                <div className="mt-2.5 flex items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs">
-                  <Calendar className="w-4 h-4 text-purple-600 shrink-0" />
-                  <span className="text-slate-600 font-medium">Друга дата:</span>
+                <div className="mt-2.5 flex items-center gap-2 bg-purple-50/70 p-2.5 rounded-2xl border border-purple-200 text-xs">
+                  <Calendar className="w-4 h-4 text-purple-700 shrink-0" />
+                  <span className="text-purple-950 font-bold">Друга дата:</span>
                   <input
                     type="date"
                     min={todayStr}
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="bg-white px-2.5 py-1 text-xs border border-slate-300 rounded-lg text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-purple-600 ml-auto"
+                    className="bg-white px-2.5 py-1 text-xs border border-purple-200 rounded-xl text-purple-950 font-medium focus:outline-hidden focus:ring-2 focus:ring-purple-600 ml-auto"
                   />
                 </div>
               </div>
 
               {/* Time Slots Area */}
               <div className="mb-6">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5">
+                <label className="block text-xs font-bold text-purple-700 uppercase tracking-wider mb-2.5">
                   2. Изберете час за {formatBulgarianDate(selectedDate)}:
                 </label>
 
@@ -505,11 +581,71 @@ export default function BookingSection({
                     <p>Зареждане на графика...</p>
                   </div>
                 ) : unavailableReason ? (
-                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center text-amber-800 text-xs">
-                    <p className="font-bold mb-1">Денят не е наличен за записване</p>
-                    <p>{unavailableReason}</p>
-                    <p className="mt-1 text-slate-500">Моля, плъзнете и изберете друг работен ден от бутоните горе.</p>
-                  </div>
+                  (() => {
+                    const matchingDayOff = daysOff.find(
+                      (d) => selectedDate >= d.start_date && selectedDate <= d.end_date
+                    );
+                    const selDateObj = new Date(selectedDate);
+                    const selDayOfWeek = (selDateObj.getDay() + 6) % 7;
+                    const isWeekend = selDayOfWeek === 5 || selDayOfWeek === 6;
+
+                    if (matchingDayOff) {
+                      return (
+                        <div className="bg-rose-50 border-2 border-rose-300 rounded-3xl p-5 text-center text-rose-950 shadow-sm space-y-2">
+                          <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center mx-auto text-2xl shadow-2xs border border-rose-200">
+                            🏖️
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-rose-600 bg-rose-200/80 px-2.5 py-0.5 rounded-full inline-block mb-1">
+                              Обявен период на отпуск / почивен ден
+                            </span>
+                            <h4 className="font-extrabold text-sm sm:text-base text-rose-950">
+                              Кабинетът не приема часове за тази дата
+                            </h4>
+                            <p className="text-xs font-bold text-rose-900 mt-1">
+                              Основание: {matchingDayOff.reason}
+                            </p>
+                            <p className="text-[11px] text-rose-700/80 mt-0.5">
+                              Период: {formatBulgarianDate(matchingDayOff.start_date)} –{' '}
+                              {formatBulgarianDate(matchingDayOff.end_date)}
+                            </p>
+                          </div>
+                          <p className="text-xs text-rose-800/80 pt-2 border-t border-rose-200/60 max-w-sm mx-auto">
+                            Моля, изберете свободен ден от календара по-горе, за да видите наличните часове.
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    if (isWeekend) {
+                      return (
+                        <div className="bg-amber-50 border-2 border-amber-300 rounded-3xl p-5 text-center text-amber-950 shadow-sm space-y-2">
+                          <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mx-auto text-2xl shadow-2xs border border-amber-200">
+                            ☀️
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-200/80 px-2.5 py-0.5 rounded-full inline-block mb-1">
+                              Почивен ден за кабинета
+                            </span>
+                            <h4 className="font-extrabold text-sm sm:text-base text-amber-950">
+                              Събота и неделя са почивни дни
+                            </h4>
+                            <p className="text-xs text-amber-900 mt-1 max-w-sm mx-auto">
+                              Работното време на Д-р Джанел Аяз е от понеделник до петък (09:00 – 18:00 ч.). Моля, изберете делничен ден за преглед.
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center text-amber-800 text-xs">
+                        <p className="font-bold mb-1">Денят не е наличен за записване</p>
+                        <p>{unavailableReason}</p>
+                        <p className="mt-1 text-slate-500">Моля, плъзнете и изберете друг работен ден от бутоните горе.</p>
+                      </div>
+                    );
+                  })()
                 ) : availableSlots.length === 0 ? (
                   <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-center text-slate-600 text-xs">
                     <p className="font-bold mb-1">Няма свободни часове за тази дата</p>

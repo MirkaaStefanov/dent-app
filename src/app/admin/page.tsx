@@ -28,7 +28,7 @@ import {
   updateAppointmentStatus,
   deleteAppointment,
   sendAppointmentReminder,
-  getAvailableSlots,
+  syncWithSupabase,
 } from '@/lib/storage';
 import { formatBulgarianDate } from '@/lib/notifications';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
@@ -53,8 +53,16 @@ import {
   Search,
   Check,
   AlertTriangle,
+  Euro,
+  Users,
+
+  ChevronRight,
+  Info,
+  RotateCw,
+  X,
+  MessageSquare,
+  ArrowUpRight,
 } from 'lucide-react';
-import InteractiveCalendar from '@/components/InteractiveCalendar';
 import AdminHourlyCalendar from '@/components/AdminHourlyCalendar';
 
 function ToothIcon({ className = "w-5 h-5" }: { className?: string }) {
@@ -92,8 +100,9 @@ export default function AdminPage() {
 
   // Филтри за графика
   const [selectedDateFilter, setSelectedDateFilter] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [searchTerm, setSearchTerm] = useState<string>('');
+
+  // Интерактивен поп-ъп за KPI броячите (Днес, Предстоящи, Приключили, Оборот)
+  const [activeKpiModal, setActiveKpiModal] = useState<'today' | 'upcoming' | 'completed' | 'revenue' | null>(null);
 
   // Модал за записване на час от лекарката (ръчно за пациент от телефона)
   const [isManualBookingOpen, setIsManualBookingOpen] = useState<boolean>(false);
@@ -153,8 +162,8 @@ export default function AdminPage() {
   }, []);
 
   // Зареждане на всички данни
-  const fetchAllData = async () => {
-    setIsLoading(true);
+  const fetchAllData = async (showSpinner = false) => {
+    if (showSpinner) setIsLoading(true);
     try {
       const [apts, srvs, hrs, doff, setts] = await Promise.all([
         getAppointments(),
@@ -174,15 +183,42 @@ export default function AdminPage() {
     } catch (err) {
       console.error('Error fetching admin data:', err);
     } finally {
-      setIsLoading(false);
+      if (showSpinner) setIsLoading(false);
     }
   };
 
   useEffect(() => {
     if (isAuthenticated) {
-      fetchAllData();
+      fetchAllData(true);
+
+      const handleStorageUpdate = (e: StorageEvent) => {
+        if (e.key && e.key.startsWith('dent_')) {
+          fetchAllData(false);
+        }
+      };
+
+      window.addEventListener('storage', handleStorageUpdate);
+      const interval = setInterval(() => fetchAllData(false), 30000); // auto-sync new appointments silently every 30s
+
+      return () => {
+        window.removeEventListener('storage', handleStorageUpdate);
+        clearInterval(interval);
+      };
     }
   }, [isAuthenticated]);
+
+  // Затваряне на KPI поп-ъп модала при натискане на Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setActiveKpiModal(null);
+      }
+    };
+    if (activeKpiModal) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeKpiModal]);
 
   // Google Вход
   const handleGoogleLogin = async () => {
@@ -198,7 +234,6 @@ export default function AdminPage() {
         handleDemoLogin();
       }
     } else {
-      // Автоматичен демо вход с Google профил на д-р Аяз
       handleDemoLogin();
     }
   };
@@ -223,13 +258,13 @@ export default function AdminPage() {
     setAdminUser(null);
   };
 
-  // Промяна на статус на час
+  // Промяна на статус на час (мигновена реакция)
   const handleStatusChange = async (aptId: string, newStatus: AppointmentStatus) => {
-    await updateAppointmentStatus(aptId, newStatus);
     setAppointments((prev) =>
       prev.map((a) => (a.id === aptId ? { ...a, status: newStatus } : a))
     );
     showToast(`Статусът на часа е променен на "${newStatus === 'completed' ? 'Приключил' : newStatus === 'cancelled' ? 'Отменен' : 'Потвърден'}"`);
+    await updateAppointmentStatus(aptId, newStatus);
   };
 
   // Изпращане на напомняне и копиране на съобщение за Viber/SMS
@@ -239,7 +274,8 @@ export default function AdminPage() {
       setAppointments((prev) =>
         prev.map((a) => (a.id === apt.id ? { ...a, reminder_sent: true } : a))
       );
-      const reminderText = `Здравейте ${apt.patient_name}, напомняме Ви за Вашия час при Д-р Джанел Аяз на ${formatBulgarianDate(apt.date)} от ${apt.start_time} ч. Кабинет: гр. Търговище, бул. „Васил Левски“ №12, тел. 088 812 3456.`;
+      const formattedTime = apt.start_time ? String(apt.start_time).slice(0, 5) : '';
+      const reminderText = `Здравейте ${apt.patient_name}, напомняме Ви за Вашия час при Д-р Джанел Аяз на ${formatBulgarianDate(apt.date)} от ${formattedTime} ч. Кабинет: гр. Търговище, бул. „Васил Левски“ №12, тел. 088 812 3456.`;
       if (typeof navigator !== 'undefined' && navigator.clipboard) {
         try {
           await navigator.clipboard.writeText(reminderText);
@@ -341,27 +377,33 @@ export default function AdminPage() {
     }
   };
 
-  // Превключване на активност на услуга
+  // Превключване на активност на услуга (мигновена реакция)
   const handleToggleServiceActive = async (service: Service) => {
-    const updated = await updateService(service.id, { is_active: !service.is_active });
-    if (updated) {
-      setServices((prev) => prev.map((s) => (s.id === service.id ? updated : s)));
-      showToast(`Услугата е ${updated.is_active ? 'активирана' : 'скрита'}.`);
-    }
+    const nextActive = !service.is_active;
+    setServices((prev) =>
+      prev.map((s) => (s.id === service.id ? { ...s, is_active: nextActive } : s))
+    );
+    showToast(`Услугата е ${nextActive ? 'активирана' : 'скрита'}.`);
+    await updateService(service.id, { is_active: nextActive });
   };
 
-  // Запазване на промени по работното време
+  // Запазване на промени по работното време (мигновена реакция)
   const handleWorkingHourChange = async (
     dayOfWeek: DayOfWeek,
     field: keyof WorkingHour,
     value: any
   ) => {
-    const updated = await updateWorkingHour(dayOfWeek, { [field]: value });
-    if (updated) {
-      setWorkingHours((prev) =>
-        prev.map((wh) => (wh.day_of_week === dayOfWeek ? updated : wh))
-      );
+    setWorkingHours((prev) =>
+      prev.map((wh) => (wh.day_of_week === dayOfWeek ? { ...wh, [field]: value } : wh))
+    );
+    const dayItem = workingHours.find((w) => w.day_of_week === dayOfWeek);
+    const dayName = dayItem ? dayItem.day_name : 'Денят';
+    if (field === 'is_working') {
+      showToast(value ? `${dayName} е активиран като работен ден.` : `${dayName} е отбелязан като почивен ден.`);
+    } else {
+      showToast(`Работното време за ${dayName} беше обновено.`);
     }
+    await updateWorkingHour(dayOfWeek, { [field]: value });
   };
 
   // Обявяване на неработен ден / отпуск
@@ -392,25 +434,8 @@ export default function AdminPage() {
     showToast('Неработният период е премахнат и датите са отново отворени за записване.');
   };
 
-  // Филтрирани часове
-  const filteredAppointments = appointments.filter((apt) => {
-    if (selectedDateFilter && apt.date !== selectedDateFilter) return false;
-    if (statusFilter !== 'all' && apt.status !== statusFilter) return false;
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
-      const matchName = apt.patient_name.toLowerCase().includes(term);
-      const matchPhone = apt.patient_phone.toLowerCase().includes(term);
-      const matchService = apt.service_title?.toLowerCase().includes(term);
-      return matchName || matchPhone || matchService;
-    }
-    return true;
-  });
-
   // Статистики за таблото
   const todayStr = new Date().toISOString().split('T')[0];
-  const tomorrowDateObj = new Date();
-  tomorrowDateObj.setDate(tomorrowDateObj.getDate() + 1);
-  const tomorrowStr = tomorrowDateObj.toISOString().split('T')[0];
 
   // Брой активни часове по дати за календара
   const appointmentsByDate = appointments.reduce((acc, apt) => {
@@ -420,53 +445,73 @@ export default function AdminPage() {
     return acc;
   }, {} as Record<string, number>);
 
-  const todayCount = appointments.filter((a) => a.date === todayStr && a.status !== 'cancelled').length;
+  const todayAppointments = appointments.filter((a) => a.date === todayStr && a.status !== 'cancelled');
+  const todayCount = todayAppointments.length;
   const completedCount = appointments.filter((a) => a.status === 'completed').length;
   const totalUpcoming = appointments.filter((a) => a.date >= todayStr && a.status === 'confirmed').length;
+  const todayRevenue = todayAppointments.reduce((sum, a) => sum + (a.service_price || 0), 0);
+
+  // Списъци за интерактивния KPI поп-ъп
+  const kpiTodayList = [...todayAppointments].sort((a, b) =>
+    (a.start_time || '').localeCompare(b.start_time || '')
+  );
+
+  const kpiUpcomingList = appointments
+    .filter((a) => a.date >= todayStr && a.status === 'confirmed')
+    .sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return (a.start_time || '').localeCompare(b.start_time || '');
+    });
+
+  const kpiCompletedList = appointments
+    .filter((a) => a.status === 'completed')
+    .sort((a, b) => {
+      if (a.date !== b.date) return b.date.localeCompare(a.date);
+      return (b.start_time || '').localeCompare(a.start_time || '');
+    });
+
+  const kpiRevenueCompleted = todayAppointments
+    .filter((a) => a.status === 'completed')
+    .reduce((sum, a) => sum + (a.service_price || 0), 0);
+
+  const kpiRevenuePending = todayAppointments
+    .filter((a) => a.status === 'confirmed')
+    .reduce((sum, a) => sum + (a.service_price || 0), 0);
 
   // ==========================================
   // АКО ПОТРЕБИТЕЛЯТ НЕ Е ЛОГНАТ -> ЕКРАН ЗА ВХОД
   // ==========================================
   if (!isAuthenticated) {
     return (
-      <main className="min-h-screen bg-linear-to-b from-purple-100/60 via-purple-50 to-white flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-3xl border border-purple-200/90 shadow-2xl shadow-purple-900/10 p-8 sm:p-10 text-center relative overflow-hidden">
-          {/* Decorative Lilac Top Bar */}
-          <div className="absolute top-0 left-0 right-0 h-2 bg-linear-to-r from-purple-600 via-purple-500 to-indigo-600" />
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
 
-          {/* Logo icon */}
-          <div className="w-16 h-16 rounded-2xl bg-purple-700 text-white flex items-center justify-center mx-auto mb-5 shadow-lg shadow-purple-900/20">
-            <ToothIcon className="w-8 h-8 text-purple-100" />
+        <div className="max-w-sm w-full bg-white rounded-2xl border border-gray-200 p-8 sm:p-10 text-center">
+
+          <div className="w-12 h-12 rounded-xl bg-purple-800 text-white flex items-center justify-center mx-auto mb-5">
+            <ToothIcon className="w-6 h-6" />
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100 text-purple-800 text-xs font-bold mb-2">
-            <Lock className="w-3.5 h-3.5 text-purple-700" />
-            <span>Административен Панел</span>
-          </div>
-
-          <h1 className="text-2xl font-extrabold text-slate-900">
+          <h1 className="text-xl font-bold text-slate-900">
             Д-р Джанел Аяз
           </h1>
-          <p className="text-xs text-slate-500 mt-1 mb-8">
-            Дентален Кабинет • гр. Търговище
+          <p className="text-sm text-slate-500 mt-1 mb-8">
+            Административен панел
           </p>
 
-          <div className="space-y-3.5">
-            {/* Direct Doctor Access - Primary */}
+          <div className="space-y-3">
             <button
               type="button"
               onClick={handleDemoLogin}
-              className="w-full py-3.5 px-4 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-sm shadow-md shadow-purple-600/25 transition-all flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 rounded-xl bg-purple-800 hover:bg-purple-900 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
-              <Lock className="w-4 h-4 text-purple-200" />
-              <span>Влез в графика на кабинета (Д-р Джанел Аяз)</span>
+              <Lock className="w-4 h-4" />
+              <span>Влез в графика</span>
             </button>
 
-            {/* Optional Google Sign-in button */}
             <button
               type="button"
               onClick={handleGoogleLogin}
-              className="w-full py-3 px-4 rounded-xl border border-slate-200 hover:border-purple-300 bg-white hover:bg-purple-50/50 text-slate-700 font-medium text-xs flex items-center justify-center gap-2.5 transition-all"
+              className="w-full py-3 px-4 rounded-xl border border-gray-200 hover:border-purple-300 bg-white text-slate-700 font-medium text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path
@@ -486,15 +531,14 @@ export default function AdminPage() {
                   d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.25 2.64 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
                 />
               </svg>
-              <span>Вход с Google акаунт</span>
+              <span>Вход с Google</span>
             </button>
           </div>
 
-          <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <Link href="/" className="text-purple-700 hover:underline flex items-center gap-1">
-              &larr; Към публичния уебсайт
+          <div className="mt-8 pt-5 border-t border-gray-100 text-xs text-slate-400">
+            <Link href="/" className="text-purple-700 hover:text-purple-900 font-medium">
+              ← Към уебсайта
             </Link>
-            <span>Търговище</span>
           </div>
         </div>
       </main>
@@ -505,54 +549,89 @@ export default function AdminPage() {
   // ОСНОВЕН ИЗГЛЕД НА АДМИН ПАНЕЛА
   // ==========================================
   return (
-    <div className="min-h-screen bg-[#FAF8FC] text-slate-900 flex flex-col">
+    <div className="min-h-screen bg-[#F8F9FC] text-slate-900 flex flex-col font-sans selection:bg-purple-200">
       
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-purple-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-purple-700 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200 text-sm font-medium">
-          <CheckCircle2 className="w-4 h-4 text-purple-300" />
+        <div className="fixed bottom-6 right-6 z-50 bg-purple-950 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-purple-700/60 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200 text-sm font-medium">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* Top Navbar */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-purple-200/80 shadow-xs">
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             
             {/* Brand */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-700 flex items-center justify-center text-white shadow-md shadow-purple-900/20">
-                <ToothIcon className="w-5 h-5 text-purple-100" />
+              <div className="w-9 h-9 rounded-lg bg-purple-800 flex items-center justify-center text-white">
+                <ToothIcon className="w-4.5 h-4.5" />
               </div>
               <div>
-                <span className="block text-base font-extrabold text-slate-900 leading-tight">
-                  Админ Панел | График и Услуги
+                <span className="block text-sm font-bold text-slate-900 leading-tight">
+                  {adminUser?.name || 'Д-р Джанел Аяз'}
                 </span>
-                <span className="block text-xs font-semibold text-purple-600">
-                  {adminUser?.name} • гр. Търговище
+                <span className="block text-xs text-slate-500">
+                  Админ панел
                 </span>
               </div>
             </div>
 
-            {/* Quick Actions & Logout */}
-            <div className="flex items-center gap-3">
+            {/* Quick Actions & Logout with Clear Visual Priority */}
+            <div className="flex items-center gap-2">
+              {/* PRIMARY ACTION: + Запиши час */}
+              <button
+                type="button"
+                onClick={() => {
+                  setManualDate(selectedDateFilter || todayStr);
+                  setManualTime('10:00');
+                  setIsManualBookingOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold text-white bg-purple-800 hover:bg-purple-900 transition-colors active:scale-95 cursor-pointer"
+                title="Запиши нов час за пациент"
+              >
+                <PlusCircle className="w-4 h-4 text-purple-200" />
+                <span>Запиши час</span>
+              </button>
+
+              {/* SECONDARY UTILITY: Обнови & Синхронизирай */}
+              <button
+                type="button"
+                onClick={async () => {
+                  showToast('Синхронизиране с базата...');
+                  const res = await syncWithSupabase();
+                  await fetchAllData(false);
+                  showToast(res.message);
+                }}
+                className="inline-flex items-center gap-1 p-2 sm:px-2.5 sm:py-2 rounded-xl text-xs font-semibold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 transition-colors cursor-pointer"
+                title="Синхронизирай с облачната база данни"
+              >
+                <RotateCw className={`w-3.5 h-3.5 text-purple-700 ${isLoading ? 'animate-spin' : ''}`} />
+                <span className="hidden lg:inline text-[11px]">Синхронизирай</span>
+              </button>
+
+              {/* SECONDARY LINK: Към сайта */}
               <Link
                 href="/"
                 target="_blank"
-                className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-colors"
+                className="hidden md:inline-flex items-center gap-1 px-2.5 py-2 rounded-xl text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 border border-transparent hover:border-slate-200/70 transition-colors"
+                title="Отвори сайта в нов прозорец"
               >
-                <ExternalLink className="w-3.5 h-3.5" />
+                <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
                 <span>Към сайта</span>
               </Link>
 
+              {/* QUIET LOGOUT: Изход */}
               <button
                 type="button"
                 onClick={handleLogout}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors"
+                className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-rose-600 hover:bg-rose-50/70 transition-colors cursor-pointer"
+                title="Изход от системата"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                <span>Изход</span>
+                <span className="hidden sm:inline">Изход</span>
               </button>
             </div>
 
@@ -561,115 +640,226 @@ export default function AdminPage() {
       </header>
 
       {/* Main Content Area */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 w-full flex-1">
         
-        {/* Navigation Tabs (Mobile Scrollable) */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-3 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none border-b border-purple-200/80 mb-6">
+        {/* Navigation Tabs (Modern Ergonomic Segmented Control) */}
+        <div className="bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80 flex items-center gap-1 overflow-x-auto scrollbar-none mb-6">
           <button
             type="button"
             onClick={() => setActiveTab('schedule')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold shrink-0 transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
               activeTab === 'schedule'
-                ? 'bg-purple-800 text-white shadow-md shadow-purple-900/20'
-                : 'bg-white text-slate-700 border border-purple-100 hover:bg-purple-50'
+                ? 'bg-purple-800 text-white shadow-xs'
+                : 'text-slate-600 hover:text-purple-900 hover:bg-white/80'
             }`}
           >
-            <CalendarIcon className="w-4 h-4 text-purple-600" />
-            <span>График & Часове ({appointments.length})</span>
+            <CalendarIcon className={`w-4 h-4 ${activeTab === 'schedule' ? 'text-purple-200' : 'text-slate-500'}`} />
+            <span>График & Пациенти</span>
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+              activeTab === 'schedule' ? 'bg-white text-purple-900' : 'bg-slate-200 text-slate-700'
+            }`}>
+              {appointments.length}
+            </span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('services')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold shrink-0 transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
               activeTab === 'services'
-                ? 'bg-purple-800 text-white shadow-md shadow-purple-900/20'
-                : 'bg-white text-slate-700 border border-purple-100 hover:bg-purple-50'
+                ? 'bg-purple-800 text-white shadow-xs'
+                : 'text-slate-600 hover:text-purple-900 hover:bg-white/80'
             }`}
           >
-            <FileText className="w-4 h-4 text-purple-600" />
-            <span>Услуги ({services.length})</span>
+            <FileText className={`w-4 h-4 ${activeTab === 'services' ? 'text-purple-200' : 'text-slate-500'}`} />
+            <span>Услуги & Ценоразпис</span>
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+              activeTab === 'services' ? 'bg-white text-purple-900' : 'bg-slate-200 text-slate-700'
+            }`}>
+              {services.length}
+            </span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('hours')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold shrink-0 transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
               activeTab === 'hours'
-                ? 'bg-purple-800 text-white shadow-md shadow-purple-900/20'
-                : 'bg-white text-slate-700 border border-purple-100 hover:bg-purple-50'
+                ? 'bg-purple-800 text-white shadow-xs'
+                : 'text-slate-600 hover:text-purple-900 hover:bg-white/80'
             }`}
           >
-            <Clock className="w-4 h-4 text-purple-600" />
+            <Clock className={`w-4 h-4 ${activeTab === 'hours' ? 'text-purple-200' : 'text-slate-500'}`} />
             <span>Работно време</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('days_off')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold shrink-0 transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
               activeTab === 'days_off'
-                ? 'bg-purple-800 text-white shadow-md shadow-purple-900/20'
-                : 'bg-white text-slate-700 border border-purple-100 hover:bg-purple-50'
+                ? 'bg-purple-800 text-white shadow-xs'
+                : 'text-slate-600 hover:text-purple-900 hover:bg-white/80'
             }`}
           >
-            <CalendarOff className="w-4 h-4 text-purple-600" />
-            <span>Почивни дни ({daysOff.length})</span>
+            <CalendarOff className={`w-4 h-4 ${activeTab === 'days_off' ? 'text-purple-200' : 'text-slate-500'}`} />
+            <span>Почивни дни & Отпуски</span>
+            {daysOff.length > 0 && (
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                activeTab === 'days_off' ? 'bg-white text-purple-900' : 'bg-purple-100 text-purple-800'
+              }`}>
+                {daysOff.length}
+              </span>
+            )}
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('settings')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold shrink-0 transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
               activeTab === 'settings'
-                ? 'bg-purple-800 text-white shadow-md shadow-purple-900/20'
-                : 'bg-white text-slate-700 border border-purple-100 hover:bg-purple-50'
+                ? 'bg-purple-800 text-white shadow-xs'
+                : 'text-slate-600 hover:text-purple-900 hover:bg-white/80'
             }`}
           >
-            <Building className="w-4 h-4 text-purple-600" />
-            <span>Кабинет</span>
+            <Building className={`w-4 h-4 ${activeTab === 'settings' ? 'text-purple-200' : 'text-slate-500'}`} />
+            <span>Настройки на кабинета</span>
           </button>
         </div>
 
         {/* ========================================================= */}
-        {/* ТАБ 1: ГРАФИК И ЧАСОВЕ (SCHEDULE) - MOBILE-FIRST */}
+        {/* ТАБ 1: ГРАФИК И ЧАСОВЕ (SCHEDULE) */}
         {/* ========================================================= */}
         {activeTab === 'schedule' && (
-          <div className="space-y-4">
-            {/* Compact Metric Summary */}
-            <div className="grid grid-cols-3 gap-2 bg-white p-3 sm:p-4 rounded-2xl border border-purple-100 shadow-xs text-center">
-              <div>
-                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Днес</span>
-                <span className="text-lg sm:text-2xl font-extrabold text-purple-900">{todayCount}</span>
-                <span className="text-[10px] text-purple-700 block font-medium">часа</span>
-              </div>
-              <div className="border-x border-purple-100">
-                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Предстоящи</span>
-                <span className="text-lg sm:text-2xl font-extrabold text-purple-800">{totalUpcoming}</span>
-                <span className="text-[10px] text-slate-500 block font-medium">общо</span>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Приключили</span>
-                <span className="text-lg sm:text-2xl font-extrabold text-emerald-600">{completedCount}</span>
-                <span className="text-[10px] text-emerald-600 block font-medium">пациента</span>
+          <div className="space-y-5">
+            {/* Контекстна лента за бърз преглед */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-1.5 sm:p-2 shadow-xs">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 sm:gap-2">
+                
+                {/* 1: Днес */}
+                <button
+                  type="button"
+                  onClick={() => setActiveKpiModal('today')}
+                  className="p-2 sm:px-3 sm:py-2 rounded-xl hover:bg-purple-50/60 transition-all text-left flex items-center gap-2.5 cursor-pointer group"
+                  title="Кликнете за списък с часовете за днес"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center shrink-0 group-hover:bg-purple-800 group-hover:text-white transition-colors">
+                    <CalendarIcon className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block leading-tight">
+                      Днес
+                    </span>
+                    <span className="text-sm font-bold text-slate-900 leading-tight">
+                      {todayCount > 0 ? `${todayCount} записани` : 'Няма часове'}
+                    </span>
+                  </div>
+                </button>
+
+                {/* 2: Предстоящи */}
+                <button
+                  type="button"
+                  onClick={() => setActiveKpiModal('upcoming')}
+                  className="p-2 sm:px-3 sm:py-2 rounded-xl hover:bg-purple-50/60 transition-all text-left flex items-center gap-2.5 cursor-pointer group border-t sm:border-t-0 sm:border-l border-slate-100"
+                  title="Кликнете за преглед на предстоящите потвърдени часове"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 group-hover:bg-purple-800 group-hover:text-white transition-colors">
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block leading-tight">
+                      Предстоящи
+                    </span>
+                    <span className="text-sm font-bold text-slate-900 leading-tight">
+                      {totalUpcoming > 0 ? `${totalUpcoming} часа` : '0 предстоящи'}
+                    </span>
+                  </div>
+                </button>
+
+                {/* 3: Приключили */}
+                <button
+                  type="button"
+                  onClick={() => setActiveKpiModal('completed')}
+                  className="p-2 sm:px-3 sm:py-2 rounded-xl hover:bg-emerald-50/60 transition-all text-left flex items-center gap-2.5 cursor-pointer group border-t lg:border-t-0 lg:border-l border-slate-100"
+                  title="Кликнете за преглед на приключилите прегледи"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block leading-tight">
+                      Приключили
+                    </span>
+                    <span className="text-sm font-bold text-emerald-800 leading-tight">
+                      {completedCount > 0 ? `${completedCount} прегледа` : '0 приключили'}
+                    </span>
+                  </div>
+                </button>
+
+                {/* 4: Дневен оборот */}
+                <button
+                  type="button"
+                  onClick={() => setActiveKpiModal('revenue')}
+                  className="p-2 sm:px-3 sm:py-2 rounded-xl hover:bg-purple-50/60 transition-all text-left flex items-center gap-2.5 cursor-pointer group border-t sm:border-t-0 sm:border-l border-slate-100"
+                  title="Кликнете за финансова разбивка на оборота"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-900 flex items-center justify-center shrink-0 group-hover:bg-purple-800 group-hover:text-white transition-colors">
+                    <Euro className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block leading-tight">
+                      Дневен оборот
+                    </span>
+                    <span className="text-sm font-bold text-purple-950 leading-tight">
+                      {todayRevenue} €
+                    </span>
+                  </div>
+                </button>
+
               </div>
             </div>
 
             {/* Единен интерактивен график по часове за телефон и компютър */}
-            <AdminHourlyCalendar
-              selectedDate={selectedDateFilter || todayStr}
-              onSelectDate={(d) => setSelectedDateFilter(d)}
-              appointments={appointments}
-              appointmentsByDate={appointmentsByDate}
-              onStatusChange={handleStatusChange}
-              onSendReminder={handleSendReminder}
-              onDeleteAppointment={handleDeleteAppointment}
-              onNewAppointmentAt={(dateStr, timeStr) => {
-                setManualDate(dateStr);
-                setManualTime(timeStr);
-                setIsManualBookingOpen(true);
-              }}
-            />
+            {isLoading && appointments.length === 0 ? (
+              <div className="bg-white rounded-3xl border border-slate-200/80 p-6 space-y-6 animate-pulse">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                  <div className="h-6 bg-slate-200 rounded-lg w-48" />
+                  <div className="flex gap-2">
+                    <div className="h-8 bg-slate-200 rounded-xl w-24" />
+                    <div className="h-8 bg-slate-200 rounded-xl w-24" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3">
+                  {[...Array(7)].map((_, i) => (
+                    <div key={i} className="h-28 bg-slate-100 rounded-2xl p-3 space-y-2">
+                      <div className="h-4 bg-slate-200 rounded w-10" />
+                      <div className="h-10 bg-slate-200/60 rounded-xl w-full" />
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-3 pt-2">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="h-20 bg-slate-100 rounded-2xl" />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <AdminHourlyCalendar
+                selectedDate={selectedDateFilter || todayStr}
+                onSelectDate={(d) => setSelectedDateFilter(d)}
+                appointments={appointments}
+                appointmentsByDate={appointmentsByDate}
+                daysOff={daysOff}
+                onStatusChange={handleStatusChange}
+                onSendReminder={handleSendReminder}
+                onDeleteAppointment={handleDeleteAppointment}
+                onNewAppointmentAt={(dateStr, timeStr) => {
+                  setManualDate(dateStr);
+                  setManualTime(timeStr);
+                  setIsManualBookingOpen(true);
+                }}
+              />
+            )}
           </div>
         )}
 
@@ -678,42 +868,42 @@ export default function AdminPage() {
         {/* ========================================================= */}
         {activeTab === 'services' && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
               <div>
-                <h3 className="text-xl font-bold text-slate-900">
-                  Управление на услуги & ценоразпис
+                <h3 className="text-lg font-bold text-slate-900">
+                  Управление на услуги & ценоразпис ({services.length})
                 </h3>
-                <p className="text-xs text-slate-500">
-                  Промените тук се отразяват незабавно в публичния сайт и формата за записване.
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Промените по услугите се визуализират директно в сайта и формата за онлайн записване.
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={() => setIsNewServiceOpen(true)}
-                className="px-4 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs flex items-center gap-2 shadow-sm"
+                className="px-4 py-2.5 rounded-xl bg-purple-800 hover:bg-purple-900 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
               >
                 <PlusCircle className="w-4 h-4" />
-                <span>+ Добави нова услуга</span>
+                <span>+ Добави нова процедура</span>
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4.5">
               {services.map((service) => (
                 <div
                   key={service.id}
-                  className={`p-6 rounded-2xl bg-white border transition-all flex flex-col justify-between ${
+                  className={`p-5 rounded-2xl bg-white border transition-all flex flex-col justify-between ${
                     service.is_active
-                      ? 'border-purple-100 shadow-xs hover:border-purple-300'
+                      ? 'border-slate-200/90 shadow-xs hover:border-purple-300 hover:shadow-md'
                       : 'border-slate-200 bg-slate-50/60 opacity-60'
                   }`}
                 >
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-purple-50 text-purple-700">
+                      <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-purple-50 text-purple-800 border border-purple-100">
                         {service.category || 'Стоматология'}
                       </span>
-                      <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <div className="flex items-center gap-1 text-xs text-slate-500 font-medium">
                         <Clock className="w-3.5 h-3.5 text-purple-600" />
                         <span>~{service.duration_minutes} мин.</span>
                       </div>
@@ -723,24 +913,29 @@ export default function AdminPage() {
                       {service.title}
                     </h4>
 
-                    <p className="text-xs text-slate-600 mt-2 line-clamp-3">
-                      {service.description}
-                    </p>
+                    {service.description && (
+                      <p className="text-xs text-slate-600 mt-2 line-clamp-3 leading-relaxed">
+                        {service.description}
+                      </p>
+                    )}
                   </div>
 
-                  <div className="mt-6 pt-4 border-t border-purple-50 flex items-center justify-between">
-                    <span className="text-lg font-extrabold text-purple-900">
-                      {service.price_bgn} €
-                    </span>
+                  <div className="mt-5 pt-3.5 border-t border-slate-100 flex items-center justify-between">
+                    <div>
+                      <span className="text-xs text-slate-400 block font-medium">Цена</span>
+                      <span className="text-lg font-extrabold text-slate-900">
+                        {service.price_bgn} €
+                      </span>
+                    </div>
 
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => handleToggleServiceActive(service)}
-                        className={`text-xs px-2.5 py-1.5 rounded-lg font-semibold transition-colors ${
+                        className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-colors cursor-pointer ${
                           service.is_active
-                            ? 'bg-amber-50 text-amber-700 hover:bg-amber-100'
-                            : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                            ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
                         }`}
                       >
                         {service.is_active ? 'Скрий' : 'Активирай'}
@@ -749,7 +944,7 @@ export default function AdminPage() {
                       <button
                         type="button"
                         onClick={() => handleDeleteService(service.id, service.title)}
-                        className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50"
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                         title="Изтрий услуга"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -767,95 +962,122 @@ export default function AdminPage() {
         {/* ========================================================= */}
         {activeTab === 'hours' && (
           <div className="space-y-6">
-            <div>
-              <h3 className="text-xl font-bold text-slate-900">
+            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
+              <h3 className="text-lg font-bold text-slate-900">
                 Седмично работно време на кабинета
               </h3>
-              <p className="text-xs text-slate-500">
-                Задайте работен интервал и обедна почивка по дни от седмицата. Системата автоматично генерира часови слотове само в тези граници.
+              <p className="text-xs text-slate-500 mt-0.5">
+                Задайте работен интервал и обедна почивка по дни от седмицата. Системата автоматично отваря свободни часове само в тези граници.
               </p>
             </div>
 
-            <div className="rounded-3xl bg-white border border-purple-100 shadow-xs overflow-hidden">
+            <div className="rounded-3xl bg-white border border-slate-200/80 shadow-xs overflow-hidden">
               <div className="divide-y divide-slate-100">
                 {workingHours.map((wh) => (
                   <div
                     key={wh.day_of_week}
-                    className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                    className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/40 transition-colors"
                   >
-                    {/* Day name & toggle working */}
-                    <div className="flex items-center gap-3 w-44">
-                      <input
-                        type="checkbox"
-                        checked={wh.is_working}
-                        id={`working-${wh.day_of_week}`}
-                        onChange={(e) =>
-                          handleWorkingHourChange(wh.day_of_week, 'is_working', e.target.checked)
+                    {/* Day name & toggle switch */}
+                    <div className="flex items-center gap-3 w-52 shrink-0">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={wh.is_working}
+                        onClick={() =>
+                          handleWorkingHourChange(wh.day_of_week, 'is_working', !wh.is_working)
                         }
-                        className="w-4 h-4 text-purple-600 rounded-sm focus:ring-purple-500"
-                      />
-                      <label
-                        htmlFor={`working-${wh.day_of_week}`}
-                        className="font-bold text-sm text-slate-900 cursor-pointer"
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                          wh.is_working ? 'bg-purple-800' : 'bg-slate-200'
+                        }`}
+                        title={wh.is_working ? 'Кликнете за почивен ден' : 'Кликнете за работен ден'}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                            wh.is_working ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleWorkingHourChange(wh.day_of_week, 'is_working', !wh.is_working)
+                        }
+                        className="font-bold text-sm text-slate-900 cursor-pointer select-none hover:text-purple-800 transition-colors text-left"
                       >
                         {wh.day_name}
-                      </label>
+                      </button>
                     </div>
 
                     {wh.is_working ? (
-                      <div className="flex flex-wrap items-center gap-4 text-xs">
+                      <div className="flex flex-wrap items-center gap-5 text-xs">
                         {/* Start and End Time */}
                         <div className="flex items-center gap-2">
-                          <span className="text-slate-500">Смяна:</span>
+                          <span className="text-slate-500 font-medium">Работна смяна:</span>
                           <input
                             type="time"
-                            value={wh.start_time}
+                            value={(wh.start_time || '09:00').slice(0, 5)}
                             onChange={(e) =>
                               handleWorkingHourChange(wh.day_of_week, 'start_time', e.target.value)
                             }
-                            className="px-2.5 py-1.5 rounded-lg border border-slate-300 font-semibold bg-white"
+                            className="px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold bg-white text-slate-900"
                           />
-                          <span>—</span>
+                          <span className="text-slate-400">—</span>
                           <input
                             type="time"
-                            value={wh.end_time}
+                            value={(wh.end_time || '18:00').slice(0, 5)}
                             onChange={(e) =>
                               handleWorkingHourChange(wh.day_of_week, 'end_time', e.target.value)
                             }
-                            className="px-2.5 py-1.5 rounded-lg border border-slate-300 font-semibold bg-white"
+                            className="px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold bg-white text-slate-900"
                           />
                         </div>
 
                         {/* Break Times */}
                         <div className="flex items-center gap-2">
-                          <span className="text-slate-500">Обедна почивка:</span>
+                          <span className="text-slate-500 font-medium">Обедна почивка:</span>
                           <input
                             type="time"
-                            value={wh.break_start || ''}
+                            value={wh.break_start ? wh.break_start.slice(0, 5) : ''}
                             onChange={(e) =>
                               handleWorkingHourChange(wh.day_of_week, 'break_start', e.target.value || null)
                             }
-                            className="px-2.5 py-1.5 rounded-lg border border-slate-300 font-semibold bg-white"
+                            className="px-2.5 py-1.5 rounded-lg border border-slate-300 font-semibold bg-white text-slate-900"
                           />
-                          <span>—</span>
+                          <span className="text-slate-400">—</span>
                           <input
                             type="time"
-                            value={wh.break_end || ''}
+                            value={wh.break_end ? wh.break_end.slice(0, 5) : ''}
                             onChange={(e) =>
                               handleWorkingHourChange(wh.day_of_week, 'break_end', e.target.value || null)
                             }
-                            className="px-2.5 py-1.5 rounded-lg border border-slate-300 font-semibold bg-white"
+                            className="px-2.5 py-1.5 rounded-lg border border-slate-300 font-semibold bg-white text-slate-900"
                           />
                         </div>
                       </div>
                     ) : (
-                      <span className="text-xs font-semibold text-slate-400">
-                        Почивен ден за д-р Аяз
+                      <span className="text-xs font-semibold text-slate-400 italic">
+                        Почивен ден за д-р Аяз (не се записват часове)
                       </span>
                     )}
 
-                    <div className="text-xs text-purple-700 font-semibold">
-                      {wh.is_working ? 'Активен ден' : 'Затворен'}
+                    <div className="text-xs font-semibold">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleWorkingHourChange(wh.day_of_week, 'is_working', !wh.is_working)
+                        }
+                        className={`px-3 py-1.5 rounded-full transition-all cursor-pointer ${
+                          wh.is_working
+                            ? 'text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200'
+                            : 'text-slate-500 bg-slate-100 hover:bg-slate-200'
+                        }`}
+                        title="Кликнете за смяна на статуса"
+                      >
+                        {wh.is_working
+                          ? `Работи (${(wh.start_time || '09:00').slice(0, 5)} - ${(wh.end_time || '18:00').slice(0, 5)})`
+                          : 'Почивен ден'}
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -869,28 +1091,28 @@ export default function AdminPage() {
         {/* ========================================================= */}
         {activeTab === 'days_off' && (
           <div className="space-y-6">
-            <div>
-              <h3 className="text-xl font-bold text-slate-900">
+            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
+              <h3 className="text-lg font-bold text-slate-900">
                 Обявяване на почивни дни, отпуск или конференции
               </h3>
-              <p className="text-xs text-slate-500">
-                Когато обявите неработен период тук, пациентите няма да могат да избират тези дати за записване на час.
+              <p className="text-xs text-slate-500 mt-0.5">
+                Когато въведете отпуск или почивен период, системата блокира записването на часове за тези дати.
               </p>
             </div>
 
             {/* Form to declare day off */}
             <form
               onSubmit={handleAddDayOffSubmit}
-              className="p-6 rounded-2xl bg-white border border-purple-100 shadow-xs space-y-4"
+              className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-4"
             >
               <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                <CalendarOff className="w-4 h-4 text-purple-600" />
+                <CalendarOff className="w-4 h-4 text-purple-700" />
                 <span>+ Добави нов неработен период</span>
               </h4>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
                     Начална дата *
                   </label>
                   <input
@@ -898,12 +1120,12 @@ export default function AdminPage() {
                     required
                     value={newDayOffStart}
                     onChange={(e) => setNewDayOffStart(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white text-slate-800"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white text-slate-900"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
                     Крайна дата *
                   </label>
                   <input
@@ -911,63 +1133,71 @@ export default function AdminPage() {
                     required
                     value={newDayOffEnd}
                     onChange={(e) => setNewDayOffEnd(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white text-slate-800"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white text-slate-900"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Причина *
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Причина / Заглавие *
                   </label>
                   <input
                     type="text"
                     required
                     value={newDayOffReason}
                     onChange={(e) => setNewDayOffReason(e.target.value)}
-                    placeholder="напр. Годишен отпуск, Обучение София"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white text-slate-800"
+                    placeholder="напр. Годишен отпуск, Стоматологичен конгрес"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white text-slate-900"
                   />
                 </div>
               </div>
 
               <button
                 type="submit"
-                className="px-6 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs transition-all shadow-sm"
+                className="px-6 py-2.5 rounded-xl bg-purple-800 hover:bg-purple-900 text-white font-bold text-xs transition-all shadow-sm cursor-pointer"
               >
                 Обяви неработен период
               </button>
             </form>
 
             {/* List of Days Off */}
-            <div className="rounded-3xl bg-white border border-purple-100 shadow-xs overflow-hidden">
-              <div className="px-6 py-4 border-b border-purple-100 font-bold text-slate-900 text-sm">
-                Всички обявени неработни дни ({daysOff.length})
+            <div className="rounded-3xl bg-white border border-slate-200/80 shadow-xs overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 font-bold text-slate-900 text-sm flex items-center justify-between">
+                <span>Всички обявени периоди</span>
+                <span className="text-xs text-slate-500 font-semibold">{daysOff.length} активни</span>
               </div>
 
               {daysOff.length === 0 ? (
-                <div className="p-8 text-center text-xs text-slate-500">
-                  Няма обявени отпуски или почивни дни.
+                <div className="p-12 text-center text-xs text-slate-400 space-y-1">
+                  <CalendarOff className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                  <p className="font-semibold text-slate-600">Няма обявени отпуски</p>
+                  <p>Кабинетът работи според стандартното седмично разписание.</p>
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100">
                   {daysOff.map((item) => (
                     <div
                       key={item.id}
-                      className="p-5 flex items-center justify-between gap-4 hover:bg-purple-50/20"
+                      className="p-5 flex items-center justify-between gap-4 hover:bg-slate-50/40"
                     >
-                      <div>
-                        <span className="block font-bold text-slate-900 text-sm">
-                          {item.reason}
-                        </span>
-                        <span className="block text-xs text-purple-700 font-semibold mt-0.5">
-                          {formatBulgarianDate(item.start_date)} — {formatBulgarianDate(item.end_date)}
-                        </span>
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center border border-purple-100">
+                          <CalendarOff className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="block font-bold text-slate-900 text-sm">
+                            {item.reason}
+                          </span>
+                          <span className="block text-xs text-purple-800 font-semibold mt-0.5">
+                            {formatBulgarianDate(item.start_date)} — {formatBulgarianDate(item.end_date)}
+                          </span>
+                        </div>
                       </div>
 
                       <button
                         type="button"
                         onClick={() => handleDeleteDayOff(item.id)}
-                        className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl"
+                        className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
                         title="Премахни неработен период"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -985,69 +1215,69 @@ export default function AdminPage() {
         {/* ========================================================= */}
         {activeTab === 'settings' && settings && (
           <div className="max-w-2xl space-y-6">
-            <div>
-              <h3 className="text-xl font-bold text-slate-900">
+            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
+              <h3 className="text-lg font-bold text-slate-900">
                 Настройки на стоматологичния кабинет
               </h3>
-              <p className="text-xs text-slate-500">
-                Информацията за лекаря и адреса се визуализира в сайта и в имейл напомнянията.
+              <p className="text-xs text-slate-500 mt-0.5">
+                Информацията за лекуващия лекар и контактите се изписва на сайта и в текстовите напомняния за пациенти.
               </p>
             </div>
 
-            <div className="p-6 rounded-3xl bg-white border border-purple-100 shadow-xs space-y-4">
+            <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Име на лекуващия лекар
                 </label>
                 <input
                   type="text"
                   value={settings.doctor_name}
                   onChange={(e) => setSettings({ ...settings, doctor_name: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm bg-white"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm bg-white font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Точен адрес в Търговище
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Точен адрес на кабинета в Търговище
                 </label>
                 <input
                   type="text"
                   value={settings.address}
                   onChange={(e) => setSettings({ ...settings, address: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm bg-white"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm bg-white font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Телефон за контакти
                   </label>
                   <input
                     type="text"
                     value={settings.phone}
                     onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm bg-white"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm bg-white font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Имейл адрес
                   </label>
                   <input
                     type="email"
                     value={settings.email}
                     onChange={(e) => setSettings({ ...settings, email: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm bg-white"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm bg-white font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Напомняне преди часа (в часове)
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Време за напомняне преди часа (в часове)
                 </label>
                 <input
                   type="number"
@@ -1055,20 +1285,25 @@ export default function AdminPage() {
                   onChange={(e) =>
                     setSettings({ ...settings, reminder_hours_before: Number(e.target.value) })
                   }
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm bg-white"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm bg-white font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                 />
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  Препоръчително: 24 часа преди часа за преглед.
+                </span>
               </div>
 
-              <button
-                type="button"
-                onClick={async () => {
-                  await updateClinicSettings(settings);
-                  showToast('Настройките бяха запазени успешно!');
-                }}
-                className="mt-4 px-6 py-3 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs transition-all shadow-md shadow-purple-600/20"
-              >
-                Запази настройките
-              </button>
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await updateClinicSettings(settings);
+                    showToast('Настройките бяха запазени успешно!');
+                  }}
+                  className="px-6 py-3 rounded-xl bg-purple-800 hover:bg-purple-900 text-white font-bold text-xs transition-all shadow-md shadow-purple-900/15 cursor-pointer"
+                >
+                  Запази промените
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1079,17 +1314,19 @@ export default function AdminPage() {
       {/* МОДАЛ: РЪЧНО ЗАПИСВАНЕ НА ЧАС ОТ ЛЕКАРКАТА (ТЕЛЕФОН/КАБИНЕТ) */}
       {/* ========================================================= */}
       {isManualBookingOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="max-w-lg w-full bg-white rounded-3xl p-6 sm:p-8 border border-purple-200 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
-            <div className="flex items-center justify-between pb-3 border-b border-purple-100">
-              <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
-                <PlusCircle className="w-5 h-5 text-purple-700" />
+        <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="max-w-lg w-full bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="font-extrabold text-slate-900 text-base sm:text-lg flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center border border-purple-100">
+                  <PlusCircle className="w-4 h-4" />
+                </div>
                 <span>Запиши час за пациент (Телефон / На място)</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setIsManualBookingOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+                className="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center cursor-pointer"
               >
                 ✕
               </button>
@@ -1106,35 +1343,37 @@ export default function AdminPage() {
                   value={manualName}
                   onChange={(e) => setManualName(e.target.value)}
                   placeholder="напр. Димитър Георгиев"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Телефонен номер *
-                </label>
-                <input
-                  type="tel"
-                  required
-                  value={manualPhone}
-                  onChange={(e) => setManualPhone(e.target.value)}
-                  placeholder="088 888 8888"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white"
-                />
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Телефонен номер *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={manualPhone}
+                    onChange={(e) => setManualPhone(e.target.value)}
+                    placeholder="088 888 8888"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Имейл адрес (по избор)
-                </label>
-                <input
-                  type="email"
-                  value={manualEmail}
-                  onChange={(e) => setManualEmail(e.target.value)}
-                  placeholder="dimitar@example.com"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white"
-                />
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Имейл адрес (по избор)
+                  </label>
+                  <input
+                    type="email"
+                    value={manualEmail}
+                    onChange={(e) => setManualEmail(e.target.value)}
+                    placeholder="dimitar@example.com"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
+                  />
+                </div>
               </div>
 
               <div>
@@ -1144,7 +1383,7 @@ export default function AdminPage() {
                 <select
                   value={manualServiceId}
                   onChange={(e) => setManualServiceId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                 >
                   {services.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -1164,7 +1403,7 @@ export default function AdminPage() {
                     required
                     value={manualDate}
                     onChange={(e) => setManualDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                   />
                 </div>
 
@@ -1177,7 +1416,7 @@ export default function AdminPage() {
                     required
                     value={manualTime}
                     onChange={(e) => setManualTime(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs bg-white"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs bg-white font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                   />
                   <div className="flex flex-wrap gap-1 mt-1.5">
                     {['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'].map((slot) => (
@@ -1185,9 +1424,9 @@ export default function AdminPage() {
                         key={slot}
                         type="button"
                         onClick={() => setManualTime(slot)}
-                        className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold border transition-all ${
+                        className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold border transition-all cursor-pointer ${
                           manualTime === slot
-                            ? 'bg-purple-700 text-white border-purple-700'
+                            ? 'bg-purple-800 text-white border-purple-800'
                             : 'bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100'
                         }`}
                       >
@@ -1200,29 +1439,29 @@ export default function AdminPage() {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Бележка / Оплакване (по избор)
+                  Бележка / Оплакване на пациента (по избор)
                 </label>
                 <input
                   type="text"
                   value={manualNotes}
                   onChange={(e) => setManualNotes(e.target.value)}
-                  placeholder="напр. обади се по телефона с остра болка"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white"
+                  placeholder="напр. обаждане по телефона: болка в долен десен зъб"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                 />
               </div>
 
-              <div className="pt-3 flex items-center justify-end gap-3">
+              <div className="pt-2 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setIsManualBookingOpen(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
                 >
                   Отказ
                 </button>
                 <button
                   type="submit"
                   disabled={manualSubmitting}
-                  className="px-6 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs shadow-md shadow-purple-600/20"
+                  className="px-6 py-2.5 rounded-xl bg-purple-800 hover:bg-purple-900 text-white font-bold text-xs shadow-md shadow-purple-900/15 cursor-pointer transition-all"
                 >
                   {manualSubmitting ? 'Запазване...' : 'Запиши часа в графика'}
                 </button>
@@ -1236,17 +1475,19 @@ export default function AdminPage() {
       {/* МОДАЛ: ДОБАВЯНЕ НА НОВА УСЛУГА */}
       {/* ========================================================= */}
       {isNewServiceOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white rounded-3xl p-6 sm:p-8 border border-purple-200 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-purple-100">
+        <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
-                <FileText className="w-5 h-5 text-purple-700" />
-                <span>Добавяне на нова дентална услуга</span>
+                <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center border border-purple-100">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <span>Нова дентална услуга</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setIsNewServiceOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+                className="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center cursor-pointer"
               >
                 ✕
               </button>
@@ -1262,8 +1503,8 @@ export default function AdminPage() {
                   required
                   value={newServiceTitle}
                   onChange={(e) => setNewServiceTitle(e.target.value)}
-                  placeholder="напр. Избелване на единичен зъб"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white"
+                  placeholder="напр. Фотополимерна обтурация"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                 />
               </div>
 
@@ -1275,8 +1516,8 @@ export default function AdminPage() {
                   type="text"
                   value={newServiceCategory}
                   onChange={(e) => setNewServiceCategory(e.target.value)}
-                  placeholder="напр. Естетика, Профилактика, Терапия"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white"
+                  placeholder="напр. Терапия, Естетика, Профилактика"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                 />
               </div>
 
@@ -1292,7 +1533,7 @@ export default function AdminPage() {
                     step={15}
                     value={newServiceDuration}
                     onChange={(e) => setNewServiceDuration(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                   />
                 </div>
 
@@ -1306,7 +1547,7 @@ export default function AdminPage() {
                     min={0}
                     value={newServicePrice}
                     onChange={(e) => setNewServicePrice(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                   />
                 </div>
               </div>
@@ -1319,27 +1560,510 @@ export default function AdminPage() {
                   rows={3}
                   value={newServiceDesc}
                   onChange={(e) => setNewServiceDesc(e.target.value)}
-                  placeholder="Опишете накратко какво включва процедурата..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white"
+                  placeholder="Опишете накратко какво включва манипулацията..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                 />
               </div>
 
-              <div className="pt-3 flex items-center justify-end gap-3">
+              <div className="pt-2 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setIsNewServiceOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
                 >
                   Отказ
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs shadow-md shadow-purple-600/20"
+                  className="px-5 py-2 rounded-xl bg-purple-800 hover:bg-purple-900 text-white font-bold text-xs shadow-md shadow-purple-900/15 cursor-pointer transition-all"
                 >
                   Добави услугата
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* ИНТЕРАКТИВЕН ПОП-ЪП МОДАЛ ЗА ДЕТАЙЛИ ОТ KPI КАРТИТЕ */}
+      {/* ========================================================= */}
+      {activeKpiModal && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+          onClick={() => setActiveKpiModal(null)}
+        >
+          <div
+            className="relative max-w-2xl w-full bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-2xl overflow-hidden flex flex-col max-h-[88vh] animate-in fade-in zoom-in-95 duration-150 text-slate-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 bg-slate-50/60">
+              <div className="flex items-center gap-3">
+                {activeKpiModal === 'today' && (
+                  <div className="w-10 h-10 rounded-xl bg-purple-100/90 text-purple-700 flex items-center justify-center border border-purple-200 shrink-0">
+                    <CalendarIcon className="w-5 h-5" />
+                  </div>
+                )}
+                {activeKpiModal === 'upcoming' && (
+                  <div className="w-10 h-10 rounded-xl bg-indigo-100/90 text-indigo-700 flex items-center justify-center border border-indigo-200 shrink-0">
+                    <Users className="w-5 h-5" />
+                  </div>
+                )}
+                {activeKpiModal === 'completed' && (
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100/90 text-emerald-700 flex items-center justify-center border border-emerald-200 shrink-0">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                )}
+                {activeKpiModal === 'revenue' && (
+                  <div className="w-10 h-10 rounded-xl bg-purple-100/90 text-purple-800 flex items-center justify-center border border-purple-200 shrink-0 font-bold">
+                    <Euro className="w-5 h-5" />
+                  </div>
+                )}
+
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-base sm:text-lg leading-snug">
+                    {activeKpiModal === 'today' && `Часове за днес (${formatBulgarianDate(todayStr).split(' ')[0]} ${formatBulgarianDate(todayStr).split(' ')[1]})`}
+                    {activeKpiModal === 'upcoming' && 'Предстоящи потвърдени часове'}
+                    {activeKpiModal === 'completed' && 'Приключили прегледи'}
+                    {activeKpiModal === 'revenue' && 'Дневен финансов отчет'}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">
+                    {activeKpiModal === 'today' && `${kpiTodayList.length} записани пациента за деня`}
+                    {activeKpiModal === 'upcoming' && `Общо ${kpiUpcomingList.length} потвърдени посещения в графика`}
+                    {activeKpiModal === 'completed' && `Общо ${kpiCompletedList.length} успешно извършени процедури`}
+                    {activeKpiModal === 'revenue' && `Дневен оборот: ${todayRevenue} € (${(todayRevenue * 1.95583).toFixed(0)} лв.)`}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveKpiModal(null)}
+                className="w-9 h-9 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 flex items-center justify-center transition-colors cursor-pointer"
+                aria-label="Затвори"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="overflow-y-auto p-4 sm:p-5 space-y-3.5 flex-1">
+              
+              {/* СЕКЦИЯ 1: ДНЕС */}
+              {activeKpiModal === 'today' && (
+                <>
+                  {kpiTodayList.length === 0 ? (
+                    <div className="text-center py-10 px-4 bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center mx-auto mb-2 text-xl">
+                        ☀️
+                      </div>
+                      <h4 className="font-bold text-slate-800 text-sm">Няма записани часове за днес ☀️</h4>
+                      <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
+                        Графикът за днес ({formatBulgarianDate(todayStr)}) е напълно свободен ☕. Можете да добавите час ръчно по всяко време.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveKpiModal(null);
+                          setManualDate(todayStr);
+                          setManualTime('10:00');
+                          setIsManualBookingOpen(true);
+                        }}
+                        className="mt-3.5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs shadow-sm cursor-pointer transition-colors"
+                      >
+                        <PlusCircle className="w-3.5 h-3.5" />
+                        <span>+ Запиши час за днес</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {kpiTodayList.map((apt) => (
+                        <div
+                          key={apt.id}
+                          className="bg-white rounded-xl sm:rounded-2xl border border-slate-200/90 p-3.5 sm:p-4 hover:border-purple-300 transition-all shadow-2xs space-y-2.5"
+                        >
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <span className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-800 font-extrabold text-xs border border-purple-100/90 flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-purple-600" />
+                                <span>{apt.start_time?.slice(0, 5)} - {apt.end_time?.slice(0, 5)}</span>
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                  apt.status === 'completed'
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : 'bg-purple-50 text-purple-700 border-purple-200'
+                                }`}
+                              >
+                                {apt.status === 'completed' ? 'Приключил ✓' : 'Потвърден'}
+                              </span>
+                            </div>
+                            <span className="text-xs font-bold text-purple-900 bg-purple-50/70 px-2 py-0.5 rounded-lg border border-purple-100">
+                              {apt.service_price} €
+                            </span>
+                          </div>
+
+                          <div>
+                            <h4 className="font-extrabold text-slate-900 text-sm sm:text-base">
+                              {apt.patient_name}
+                            </h4>
+                            <p className="text-xs text-slate-600 font-medium mt-0.5">
+                              {apt.service_title} <span className="text-slate-400">({apt.service_duration} мин)</span>
+                            </p>
+                            {apt.notes && (
+                              <p className="text-[11px] text-slate-500 italic mt-1.5 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                💬 {apt.notes}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <a
+                                href={`tel:${apt.patient_phone}`}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
+                              >
+                                <Phone className="w-3 h-3 text-emerald-600" />
+                                <span>{apt.patient_phone}</span>
+                              </a>
+
+                              <button
+                                type="button"
+                                onClick={() => handleSendReminder(apt)}
+                                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
+                                  apt.reminder_sent
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : 'bg-purple-50 text-purple-800 border-purple-100 hover:bg-purple-100'
+                                }`}
+                                title="Копирай напомняне за Viber/SMS"
+                              >
+                                <Bell className="w-3 h-3 text-purple-600" />
+                                <span>{apt.reminder_sent ? 'Напомнено ✓' : 'Напомняне'}</span>
+                              </button>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 ml-auto">
+                              {apt.status === 'confirmed' ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStatusChange(apt.id, 'completed')}
+                                    className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors cursor-pointer"
+                                  >
+                                    Приключи ✓
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStatusChange(apt.id, 'cancelled')}
+                                    className="px-2 py-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 text-xs font-medium transition-colors cursor-pointer"
+                                  >
+                                    Отмени
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleStatusChange(apt.id, 'confirmed')}
+                                  className="text-[11px] text-slate-500 hover:text-slate-800 underline cursor-pointer"
+                                >
+                                  Върни като потвърден
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteAppointment(apt.id, apt.patient_name)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                title="Изтрий часа"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* СЕКЦИЯ 2: ПРЕДСТОЯЩИ */}
+              {activeKpiModal === 'upcoming' && (
+                <>
+                  {kpiUpcomingList.length === 0 ? (
+                    <div className="text-center py-10 px-4 bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">
+                      <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center mx-auto mb-2 text-xl">
+                        ☕
+                      </div>
+                      <h4 className="font-bold text-slate-800 text-sm">Няма предстоящи часове — графикът е спокоен ☕</h4>
+                      <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
+                        В момента няма бъдещи потвърдени часове. Нови онлайн резервации ще се появят тук веднага след записване 🌤️.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {kpiUpcomingList.map((apt) => (
+                        <div
+                          key={apt.id}
+                          className="bg-white rounded-xl sm:rounded-2xl border border-slate-200/90 p-3.5 sm:p-4 hover:border-indigo-300 transition-all shadow-2xs space-y-2.5"
+                        >
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-900 font-extrabold text-xs border border-indigo-100 flex items-center gap-1">
+                                <CalendarIcon className="w-3 h-3 text-indigo-600" />
+                                <span>{formatBulgarianDate(apt.date)}</span>
+                              </span>
+                              <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 font-bold text-xs flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-slate-500" />
+                                <span>{apt.start_time?.slice(0, 5)} - {apt.end_time?.slice(0, 5)}</span>
+                              </span>
+                            </div>
+                            <span className="text-xs font-bold text-indigo-900 bg-indigo-50/70 px-2 py-0.5 rounded-lg border border-indigo-100">
+                              {apt.service_price} €
+                            </span>
+                          </div>
+
+                          <div>
+                            <h4 className="font-extrabold text-slate-900 text-sm sm:text-base">
+                              {apt.patient_name}
+                            </h4>
+                            <p className="text-xs text-slate-600 font-medium mt-0.5">
+                              {apt.service_title} <span className="text-slate-400">({apt.service_duration} мин)</span>
+                            </p>
+                          </div>
+
+                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <a
+                                href={`tel:${apt.patient_phone}`}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
+                              >
+                                <Phone className="w-3 h-3 text-emerald-600" />
+                                <span>{apt.patient_phone}</span>
+                              </a>
+
+                              <button
+                                type="button"
+                                onClick={() => handleSendReminder(apt)}
+                                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
+                                  apt.reminder_sent
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : 'bg-indigo-50 text-indigo-800 border-indigo-100 hover:bg-indigo-100'
+                                }`}
+                                title="Копирай напомняне за Viber/SMS"
+                              >
+                                <Bell className="w-3 h-3 text-indigo-600" />
+                                <span>{apt.reminder_sent ? 'Напомнено ✓' : 'Напомняне'}</span>
+                              </button>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 ml-auto">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedDateFilter(apt.date);
+                                  setActiveKpiModal(null);
+                                }}
+                                className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium text-indigo-700 hover:bg-indigo-50 transition-colors cursor-pointer"
+                                title="Покажи тази дата в графика"
+                              >
+                                <span>В графика</span>
+                                <ArrowUpRight className="w-3 h-3" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleStatusChange(apt.id, 'completed')}
+                                className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors cursor-pointer"
+                              >
+                                Приключи ✓
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleStatusChange(apt.id, 'cancelled')}
+                                className="px-2 py-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 text-xs font-medium transition-colors cursor-pointer"
+                              >
+                                Отмени
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* СЕКЦИЯ 3: ПРИКЛЮЧИЛИ */}
+              {activeKpiModal === 'completed' && (
+                <>
+                  {kpiCompletedList.length === 0 ? (
+                    <div className="text-center py-10 px-4 bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-2 text-xl">
+                        🌤️
+                      </div>
+                      <h4 className="font-bold text-slate-800 text-sm">Все още няма приключили прегледи днес 🌤️</h4>
+                      <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
+                        След като извършите процедура за даден пациент, натиснете зеления бутон „Приключи ✓“ на съответния час.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {kpiCompletedList.map((apt) => (
+                        <div
+                          key={apt.id}
+                          className="bg-white rounded-xl sm:rounded-2xl border border-slate-200/90 p-3.5 sm:p-4 hover:border-emerald-300 transition-all shadow-2xs space-y-2"
+                        >
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 font-extrabold text-xs border border-emerald-100 flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span>{formatBulgarianDate(apt.date)}</span>
+                              </span>
+                              <span className="text-xs font-semibold text-slate-500">
+                                {apt.start_time?.slice(0, 5)} ч.
+                              </span>
+                            </div>
+                            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100">
+                              +{apt.service_price} €
+                            </span>
+                          </div>
+
+                          <div>
+                            <h4 className="font-extrabold text-slate-900 text-sm">
+                              {apt.patient_name}
+                            </h4>
+                            <p className="text-xs text-slate-600 font-medium">
+                              {apt.service_title}
+                            </p>
+                          </div>
+
+                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                            <span className="text-slate-400 font-medium">{apt.patient_phone}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleStatusChange(apt.id, 'confirmed')}
+                              className="text-slate-400 hover:text-slate-600 underline text-[11px] cursor-pointer"
+                            >
+                              Върни като потвърден
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* СЕКЦИЯ 4: ДНЕВЕН ОБОРОТ */}
+              {activeKpiModal === 'revenue' && (
+                <div className="space-y-4">
+                  {/* Summary Box */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
+                    <div className="bg-white p-3 rounded-xl border border-slate-200/70 shadow-2xs">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Дневен оборот</span>
+                      <div className="flex items-baseline gap-1 mt-1">
+                        <span className="text-2xl font-bold text-purple-900">{todayRevenue}</span>
+                        <span className="text-xs font-extrabold text-purple-700">€</span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 block mt-0.5">≈ {(todayRevenue * 1.95583).toFixed(0)} лв.</span>
+                    </div>
+
+                    <div className="bg-white p-3 rounded-xl border border-slate-200/70 shadow-2xs">
+                      <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">Реализиран (приключили)</span>
+                      <div className="flex items-baseline gap-1 mt-1">
+                        <span className="text-2xl font-bold text-emerald-700">{kpiRevenueCompleted}</span>
+                        <span className="text-xs font-extrabold text-emerald-600">€</span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 block mt-0.5">от {kpiTodayList.filter(a => a.status === 'completed').length} пациента</span>
+                    </div>
+
+                    <div className="bg-white p-3 rounded-xl border border-slate-200/70 shadow-2xs">
+                      <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider block">Предстоящ за днес</span>
+                      <div className="flex items-baseline gap-1 mt-1">
+                        <span className="text-2xl font-bold text-indigo-800">{kpiRevenuePending}</span>
+                        <span className="text-xs font-extrabold text-indigo-600">€</span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 block mt-0.5">от {kpiTodayList.filter(a => a.status === 'confirmed').length} пациента</span>
+                    </div>
+                  </div>
+
+                  {/* List of procedures today */}
+                  <div>
+                    <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-2.5">
+                      Разбивка по процедури за днес ({kpiTodayList.length})
+                    </h4>
+
+                    {kpiTodayList.length === 0 ? (
+                      <p className="text-xs text-slate-500 italic py-4 text-center bg-slate-50 rounded-xl">
+                        Няма записани часове за днес, от които да се изчисли оборот.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {kpiTodayList.map((apt) => (
+                          <div
+                            key={apt.id}
+                            className="bg-white p-3 rounded-xl border border-slate-200/80 flex items-center justify-between gap-3 text-xs"
+                          >
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-extrabold text-slate-900 truncate">
+                                  {apt.patient_name}
+                                </span>
+                                <span
+                                  className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                    apt.status === 'completed'
+                                      ? 'bg-emerald-50 text-emerald-700'
+                                      : 'bg-slate-100 text-slate-600'
+                                  }`}
+                                >
+                                  {apt.status === 'completed' ? 'Приключил' : 'Очаква се'}
+                                </span>
+                              </div>
+                              <p className="text-slate-500 text-[11px] truncate mt-0.5">
+                                {apt.start_time?.slice(0, 5)} ч. • {apt.service_title}
+                              </p>
+                            </div>
+
+                            <span className="font-bold text-purple-900 shrink-0 text-sm">
+                              +{apt.service_price} €
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* Footer */}
+            <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50/70 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveKpiModal(null);
+                  setManualDate(todayStr);
+                  setManualTime('10:00');
+                  setIsManualBookingOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-purple-900 bg-purple-100/70 hover:bg-purple-100 transition-colors cursor-pointer"
+              >
+                <PlusCircle className="w-3.5 h-3.5 text-purple-700" />
+                <span>+ Запиши нов час</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveKpiModal(null)}
+                className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs cursor-pointer transition-colors"
+              >
+                Затвори
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1352,7 +2076,7 @@ export default function AdminPage() {
           setManualTime('10:00');
           setIsManualBookingOpen(true);
         }}
-        className="sm:hidden fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-purple-800 text-white shadow-2xl flex items-center justify-center active:scale-95 transition-transform border border-white/20"
+        className="sm:hidden fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-linear-to-br from-purple-700 to-indigo-800 text-white shadow-2xl flex items-center justify-center active:scale-95 transition-transform border border-white/30 cursor-pointer"
         aria-label="Запиши нов час"
         title="Запиши нов час за пациент"
       >

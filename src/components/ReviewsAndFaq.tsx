@@ -18,7 +18,7 @@ const faqs = [
   },
   {
     q: 'Има ли възможност за паркиране до кабинета?',
-    a: 'Да. Кабинетът се намира на бул. „Васил Левски“ №12, ет. 2, каб. 4. В непосредствена близост до входа има удобни места за паркиране.',
+    a: 'Да. Кабинетът се намира на бул. „Васил Левски" №12, ет. 2, каб. 4. В непосредствена близост до входа има удобни места за паркиране.',
   },
   {
     q: 'Работите ли с деца?',
@@ -34,43 +34,40 @@ export default function ReviewsAndFaq() {
   };
 
   return (
-    <section id="faq" className="py-16 sm:py-24 border-b border-purple-100/80 bg-white">
+    <section id="faq" className="py-16 sm:py-24 bg-gray-50/50">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Header */}
-        <div className="text-center mb-12 sm:mb-16 space-y-3">
-          <span className="text-xs font-bold text-purple-700 uppercase tracking-widest block">
-            Въпроси & Отговори
-          </span>
-          <h2 className="font-serif text-3xl sm:text-4xl font-normal text-slate-900 tracking-tight">
+        <div className="mb-12 sm:mb-16">
+          <h2 className="font-serif text-3xl sm:text-4xl font-normal text-slate-900 tracking-tight mb-3">
             Често задавани въпроси
           </h2>
-          <p className="text-sm sm:text-base text-slate-600 font-normal">
+          <p className="text-base text-slate-500">
             Информация за Вашето посещение при Д-р Джанел Аяз.
           </p>
         </div>
 
         {/* FAQ Accordion */}
-        <div className="divide-y divide-purple-100 border-y border-purple-100">
+        <div className="divide-y divide-gray-200">
           {faqs.map((faq, index) => {
             const isOpen = openIndex === index;
             return (
-              <div key={index} className={`py-5 transition-colors ${isOpen ? 'bg-purple-50/30 px-3 rounded-2xl' : ''}`}>
+              <div key={index} className="py-5">
                 <button
                   type="button"
                   className="w-full flex items-center justify-between text-left focus:outline-hidden group"
                   onClick={() => toggleFaq(index)}
                   aria-expanded={isOpen}
                 >
-                  <span className={`text-base font-bold transition-colors pr-4 ${isOpen ? 'text-purple-900' : 'text-slate-900 group-hover:text-purple-800'}`}>
+                  <span className={`text-base font-medium transition-colors pr-4 ${isOpen ? 'text-purple-800' : 'text-slate-900 group-hover:text-purple-700'}`}>
                     {faq.q}
                   </span>
-                  <div className={`p-1 rounded-full text-purple-600 transition-transform ${isOpen ? 'rotate-180 text-purple-800' : ''}`}>
+                  <div className={`text-slate-400 transition-transform shrink-0 ${isOpen ? 'rotate-180 text-purple-600' : ''}`}>
                     <ChevronDown className="w-4 h-4" />
                   </div>
                 </button>
                 {isOpen && (
-                  <div className="pt-3 text-sm text-slate-600 leading-relaxed font-normal">
+                  <div className="pt-3 text-sm text-slate-500 leading-relaxed pr-8">
                     {faq.a}
                   </div>
                 )}
@@ -79,10 +76,10 @@ export default function ReviewsAndFaq() {
           })}
         </div>
 
-        {/* Discreet Contact Hint */}
-        <div className="mt-10 text-center text-xs sm:text-sm text-slate-500">
-          Имате друг въпрос? Свържете се с кабинета на{' '}
-          <a href="tel:+359888123456" className="text-purple-800 font-bold underline hover:text-purple-950">
+        {/* Contact hint */}
+        <div className="mt-10 text-sm text-slate-400">
+          Имате друг въпрос? Обадете се на{' '}
+          <a href="tel:+359888123456" className="text-purple-700 font-medium hover:text-purple-900">
             088 812 3456
           </a>
         </div>
