@@ -1,6 +1,6 @@
 import React from 'react';
 import { WorkingHour } from '@/types/database';
-import { MapPin, Phone, Mail, ExternalLink } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 
 interface ContactSectionProps {
   workingHours: WorkingHour[];
@@ -14,72 +14,61 @@ export default function ContactSection({ workingHours }: ContactSectionProps) {
   });
 
   return (
-    <section id="contacts" className="py-16 sm:py-24 border-b border-purple-100/80 bg-[#faf8fc]">
+    <section id="contacts" className="py-16 sm:py-24 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Header */}
-        <div className="max-w-2xl mx-auto text-center mb-12 sm:mb-16 space-y-3">
-          <span className="text-xs font-bold text-purple-700 uppercase tracking-widest block">
-            Контакти &middot; Търговище
-          </span>
-          <h2 className="font-serif text-3xl sm:text-4xl font-normal text-slate-900 tracking-tight">
+        <div className="max-w-xl mb-12 sm:mb-16">
+          <h2 className="font-serif text-3xl sm:text-4xl font-normal text-slate-900 tracking-tight mb-3">
             Контакти и работно време
           </h2>
-          <p className="text-sm sm:text-base text-slate-600 font-normal">
-            Кабинетът се намира на лесно и комуникативно място в центъра на града.
+          <p className="text-base text-slate-500">
+            Кабинетът се намира на лесно достъпно място в центъра на града.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 max-w-5xl mx-auto items-start">
-          
-          {/* Left Column: Coordinates */}
-          <div className="lg:col-span-6 bg-white rounded-3xl border border-purple-100 p-7 sm:p-9 space-y-6 shadow-lg shadow-purple-900/5">
-            
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl">
+
+          {/* Contact info */}
+          <div className="bg-gray-50 rounded-xl border border-gray-200 p-7 space-y-5">
+
             <div className="space-y-1">
-              <span className="text-xs font-bold text-purple-700 uppercase tracking-wider block">
-                Адрес на практиката
-              </span>
-              <p className="text-base sm:text-lg font-bold text-slate-900">
+              <span className="text-sm font-medium text-slate-400 block">Адрес</span>
+              <p className="text-base font-semibold text-slate-900">
                 гр. Търговище
               </p>
-              <p className="text-sm text-slate-600">
-                бул. „Васил Левски“ №12, ет. 2, каб. 4 (до паркинг)
+              <p className="text-sm text-slate-500">
+                бул. „Васил Левски" №12, ет. 2, каб. 4
               </p>
-              <div className="pt-2">
-                <a
-                  href="https://maps.google.com/?q=бул.+Васил+Левски+12+Търговище"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-800 hover:text-purple-950 underline"
-                >
-                  <span>Отворете в Google Maps</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              </div>
+              <a
+                href="https://maps.google.com/?q=бул.+Васил+Левски+12+Търговище"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm text-purple-700 hover:text-purple-900 mt-1"
+              >
+                <span>Google Maps</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
             </div>
 
-            <div className="pt-4 border-t border-purple-50 space-y-1">
-              <span className="text-xs font-bold text-purple-700 uppercase tracking-wider block">
-                Телефон за контакт
-              </span>
+            <div className="pt-4 border-t border-gray-200 space-y-1">
+              <span className="text-sm font-medium text-slate-400 block">Телефон</span>
               <a
                 href="tel:+359888123456"
-                className="text-lg sm:text-xl font-extrabold text-purple-900 hover:text-purple-700 block transition-colors"
+                className="text-lg font-semibold text-slate-900 hover:text-purple-800 transition-colors block"
               >
                 088 812 3456
               </a>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-400">
                 Приемът е с предварително записан час
               </p>
             </div>
 
-            <div className="pt-4 border-t border-purple-50 space-y-1">
-              <span className="text-xs font-bold text-purple-700 uppercase tracking-wider block">
-                Имейл
-              </span>
+            <div className="pt-4 border-t border-gray-200 space-y-1">
+              <span className="text-sm font-medium text-slate-400 block">Имейл</span>
               <a
                 href="mailto:dr.ayaz.dent@gmail.com"
-                className="text-sm font-semibold text-slate-800 hover:text-purple-800 block transition-colors"
+                className="text-sm text-slate-700 hover:text-purple-800 transition-colors block"
               >
                 dr.ayaz.dent@gmail.com
               </a>
@@ -87,27 +76,25 @@ export default function ContactSection({ workingHours }: ContactSectionProps) {
 
           </div>
 
-          {/* Right Column: Working Hours Schedule */}
-          <div className="lg:col-span-6 bg-white rounded-3xl border border-purple-100 p-7 sm:p-9 shadow-lg shadow-purple-900/5 space-y-5">
-            <span className="text-xs font-bold text-purple-700 uppercase tracking-wider block">
-              График на кабинета
-            </span>
+          {/* Working hours */}
+          <div className="bg-gray-50 rounded-xl border border-gray-200 p-7 space-y-4">
+            <span className="text-sm font-medium text-slate-400 block">Работно време</span>
 
-            <div className="divide-y divide-purple-50 text-sm">
+            <div className="divide-y divide-gray-200 text-sm">
               {sortedHours.map((wh) => (
                 <div key={wh.id} className="py-2.5 flex items-center justify-between">
-                  <span className="font-semibold text-slate-800">
+                  <span className="text-slate-700">
                     {wh.day_name}
                   </span>
-                  <span className={wh.is_working ? 'font-bold text-purple-900' : 'text-slate-400'}>
-                    {wh.is_working ? `${wh.start_time} – ${wh.end_time} ч.` : 'Почивен ден'}
+                  <span className={wh.is_working ? 'font-medium text-slate-900' : 'text-slate-400'}>
+                    {wh.is_working ? `${wh.start_time} – ${wh.end_time}` : 'Почивен ден'}
                   </span>
                 </div>
               ))}
             </div>
 
-            <p className="text-xs text-slate-500 pt-2">
-              * За спешни случаи извън графика, моля позвънете директно на обявения телефон.
+            <p className="text-xs text-slate-400 pt-1">
+              * При спешност извън работно време, моля позвънете.
             </p>
           </div>
 

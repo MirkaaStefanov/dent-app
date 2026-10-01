@@ -107,11 +107,11 @@ function getPatientInitials(name?: string): string {
 }
 
 const AVATAR_GRADIENTS = [
-  'from-purple-600 to-violet-700',
-  'from-violet-700 to-indigo-800',
+  'from-purple-600 to-purple-700',
+  'from-purple-700 to-indigo-800',
   'from-fuchsia-600 to-purple-700',
   'from-purple-500 to-pink-600',
-  'from-indigo-600 to-violet-600',
+  'from-indigo-600 to-purple-600',
   'from-teal-600 to-emerald-700',
 ];
 
@@ -321,7 +321,7 @@ export default function AdminHourlyCalendar({
       {/* ───────────────────────────────────────────────────────── */}
       {/* 1. TOP TOOLBAR: VIEW TOGGLE, NAVIGATION & SEARCH */}
       {/* ───────────────────────────────────────────────────────── */}
-      <div className="bg-linear-to-r from-purple-50/80 via-white to-violet-50/70 rounded-3xl border-2 border-purple-200 p-3.5 sm:p-5 shadow-sm space-y-3.5">
+      <div className="bg-linear-to-r from-purple-50/80 via-white to-purple-50/70 rounded-3xl border border-purple-100 p-3.5 sm:p-5 shadow-sm space-y-3.5">
         
         {/* Row 1: Active Title & Stepper + View Switcher */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -341,7 +341,7 @@ export default function AdminHourlyCalendar({
               <button
                 type="button"
                 onClick={handleJumpToToday}
-                className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-xs font-black text-purple-950 hover:bg-white hover:text-purple-700 hover:shadow-xs transition-all cursor-pointer"
+                className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-xs font-bold text-purple-950 hover:bg-white hover:text-purple-700 hover:shadow-xs transition-all cursor-pointer"
               >
                 Днес
               </button>
@@ -356,7 +356,7 @@ export default function AdminHourlyCalendar({
               </button>
             </div>
 
-            <h2 className="font-serif text-sm sm:text-lg font-black text-purple-950 truncate pl-1 flex items-center gap-1.5">
+            <h2 className="font-serif text-sm sm:text-lg font-bold text-purple-950 truncate pl-1 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-purple-600 inline-block animate-pulse" />
               <span>{getHeaderTitle()}</span>
             </h2>
@@ -369,9 +369,9 @@ export default function AdminHourlyCalendar({
               <button
                 type="button"
                 onClick={() => setViewMode('month')}
-                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   viewMode === 'month'
-                    ? 'bg-linear-to-r from-purple-700 to-violet-800 text-white shadow-xs'
+                    ? 'bg-purple-800 text-white shadow-xs'
                     : 'text-purple-900 hover:text-purple-950 hover:bg-white/70'
                 }`}
               >
@@ -382,9 +382,9 @@ export default function AdminHourlyCalendar({
               <button
                 type="button"
                 onClick={() => setViewMode('week')}
-                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   viewMode === 'week'
-                    ? 'bg-linear-to-r from-purple-700 to-violet-800 text-white shadow-xs'
+                    ? 'bg-purple-800 text-white shadow-xs'
                     : 'text-purple-900 hover:text-purple-950 hover:bg-white/70'
                 }`}
               >
@@ -395,9 +395,9 @@ export default function AdminHourlyCalendar({
               <button
                 type="button"
                 onClick={() => setViewMode('day')}
-                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   viewMode === 'day'
-                    ? 'bg-linear-to-r from-purple-700 to-violet-800 text-white shadow-xs'
+                    ? 'bg-purple-800 text-white shadow-xs'
                     : 'text-purple-900 hover:text-purple-950 hover:bg-white/70'
                 }`}
               >
@@ -410,7 +410,7 @@ export default function AdminHourlyCalendar({
             <button
               type="button"
               onClick={() => onNewAppointmentAt(activeDate, '10:00')}
-              className="px-3.5 sm:px-4 py-2 rounded-2xl bg-linear-to-r from-purple-700 via-purple-800 to-violet-900 hover:from-purple-800 hover:to-violet-950 text-white text-xs font-black flex items-center justify-center gap-1.5 shadow-md shadow-purple-900/20 ring-2 ring-purple-400/30 transition-all cursor-pointer active:scale-98 shrink-0"
+              className="px-3.5 sm:px-4 py-2 rounded-2xl bg-purple-800 hover:from-purple-800 hover:to-purple-950 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md shadow-purple-900/20 ring-2 ring-purple-400/30 transition-all cursor-pointer active:scale-98 shrink-0"
             >
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Запиши нов час</span>
@@ -471,33 +471,33 @@ export default function AdminHourlyCalendar({
 
         {/* Row 3: Visual Color Legend (Легенда за цветовете) */}
         <div className="flex items-center gap-2.5 sm:gap-4 flex-wrap text-[10px] sm:text-[11px] font-semibold text-purple-900 pt-2 border-t border-purple-100">
-          <span className="text-purple-400 font-black hidden sm:inline">Легенда:</span>
+          <span className="text-purple-400 font-bold hidden sm:inline">Легенда:</span>
           
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-md bg-emerald-500 shadow-xs" />
-            <span className="text-emerald-950 font-black">Потвърден / Приключил</span>
+            <span className="text-emerald-950 font-bold">Потвърден / Приключил</span>
           </div>
 
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-md bg-amber-100 border border-amber-400" />
-            <span className="text-amber-900 font-black">Уикенд (Сб / Нд)</span>
+            <span className="text-amber-900 font-bold">Уикенд (Сб / Нд)</span>
           </div>
 
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-md bg-rose-100 border border-rose-400 relative overflow-hidden flex items-center justify-center text-[8px] font-black text-rose-700">
+            <span className="w-3 h-3 rounded-md bg-rose-100 border border-rose-400 relative overflow-hidden flex items-center justify-center text-[8px] font-bold text-rose-700">
               ✕
             </span>
-            <span className="text-rose-900 font-black">Отпуск (с основание)</span>
+            <span className="text-rose-900 font-bold">Отпуск (с основание)</span>
           </div>
 
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-md bg-white border-2 border-purple-200" />
+            <span className="w-3 h-3 rounded-md bg-white border border-purple-100" />
             <span className="text-purple-900 font-bold">Свободен работен ден</span>
           </div>
 
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-md bg-purple-600 ring-2 ring-purple-300 animate-pulse" />
-            <span className="text-purple-950 font-black">Днес (активен)</span>
+            <span className="text-purple-950 font-bold">Днес (активен)</span>
           </div>
 
           <div className="flex items-center gap-1.5">
@@ -519,18 +519,18 @@ export default function AdminHourlyCalendar({
         <div className="space-y-4">
           
           {/* Main Month Box */}
-          <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-md shadow-purple-950/5 overflow-hidden p-2.5 sm:p-5">
+          <div className="bg-white rounded-3xl border border-purple-100 shadow-md shadow-purple-950/5 overflow-hidden p-2.5 sm:p-5">
             
             {/* Weekdays Header */}
-            <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2.5 text-center bg-linear-to-r from-purple-100/90 via-violet-100/80 to-purple-100/90 p-1.5 rounded-2xl border border-purple-200/90">
+            <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2.5 text-center bg-linear-to-r from-purple-100/90 via-purple-100/80 to-purple-100/90 p-1.5 rounded-2xl border border-purple-200/90">
               {BG_WEEKDAYS_SHORT.map((day, idx) => {
                 const isWknd = idx >= 5;
                 return (
                   <div
                     key={day}
-                    className={`text-[11px] sm:text-xs font-black py-1.5 uppercase tracking-wider rounded-xl transition-all ${
+                    className={`text-[11px] sm:text-xs font-bold py-1.5 uppercase tracking-wider rounded-xl transition-all ${
                       isWknd
-                        ? 'bg-amber-100/90 text-amber-900 border border-amber-300/80 shadow-2xs font-black'
+                        ? 'bg-amber-100/90 text-amber-900 border border-amber-300/80 shadow-2xs font-bold'
                         : 'text-purple-950'
                     }`}
                   >
@@ -565,9 +565,9 @@ export default function AdminHourlyCalendar({
                       !cell.isCurrentMonth
                         ? 'bg-purple-50/15 text-slate-300 border-transparent opacity-20 pointer-events-none'
                         : dayOff
-                        ? 'bg-rose-50 border-2 border-rose-300 text-rose-950 font-black shadow-2xs'
+                        ? 'bg-rose-50 border-2 border-rose-300 text-rose-950 font-bold shadow-2xs'
                         : isToday
-                        ? 'bg-linear-to-b from-purple-100 to-violet-100 border-2 border-purple-600 ring-2 ring-purple-400/50 shadow-xs'
+                        ? 'bg-linear-to-b from-purple-100 to-purple-100 border-2 border-purple-600 ring-2 ring-purple-400/50 shadow-xs'
                         : isSelected
                         ? 'bg-purple-800 text-white border-2 border-purple-800 shadow-sm'
                         : isPast
@@ -576,8 +576,8 @@ export default function AdminHourlyCalendar({
                           : 'bg-slate-100/60 text-slate-400 border-slate-200/60 opacity-50'
                         : hasApts
                         ? isWeekend
-                          ? 'bg-amber-50 border-2 border-purple-400 text-purple-950 font-black shadow-2xs'
-                          : 'bg-purple-50/80 border-2 border-purple-300 text-purple-950 font-black shadow-2xs'
+                          ? 'bg-amber-50 border-2 border-purple-400 text-purple-950 font-bold shadow-2xs'
+                          : 'bg-purple-50/80 border border-purple-200 text-purple-950 font-bold shadow-2xs'
                         : isWeekend
                         ? 'bg-amber-50/70 border-2 border-amber-200 text-amber-900 font-bold'
                         : 'bg-white border-2 border-purple-100 text-purple-950 font-bold shadow-2xs'
@@ -592,19 +592,19 @@ export default function AdminHourlyCalendar({
                     )}
 
                     <span
-                      className={`text-xs font-black leading-none mt-0.5 z-10 relative ${
+                      className={`text-xs font-bold leading-none mt-0.5 z-10 relative ${
                         dayOff && cell.isCurrentMonth
                           ? 'text-rose-950'
                           : isSelected && cell.isCurrentMonth
                           ? 'text-white'
                           : isToday
-                          ? 'text-purple-950 font-black'
+                          ? 'text-purple-950 font-bold'
                           : isPast
                           ? 'text-slate-400'
                           : hasApts
-                          ? 'text-purple-950 font-black'
+                          ? 'text-purple-950 font-bold'
                           : isWeekend
-                          ? 'text-amber-900 font-black'
+                          ? 'text-amber-900 font-bold'
                           : 'text-purple-950 font-bold'
                       }`}
                     >
@@ -663,7 +663,7 @@ export default function AdminHourlyCalendar({
                         : dayOff
                         ? 'bg-rose-50/70 border-rose-300 ring-2 ring-rose-200/60 shadow-2xs hover:border-rose-400'
                         : isToday
-                        ? 'bg-linear-to-b from-purple-100/95 via-violet-50/80 to-purple-50/70 border-purple-600 ring-4 ring-purple-400/30 shadow-md'
+                        ? 'bg-linear-to-b from-purple-100/95 via-purple-50/80 to-purple-50/70 border-purple-600 ring-4 ring-purple-400/30 shadow-md'
                         : isSelected
                         ? 'bg-purple-50 border-purple-600 ring-2 ring-purple-400/40 shadow-sm'
                         : isPast
@@ -691,19 +691,19 @@ export default function AdminHourlyCalendar({
                     <div className="flex items-center justify-between z-10 relative">
                       <div className="flex items-center gap-1.5">
                         <span
-                          className={`text-xs font-black w-6 h-6 flex items-center justify-center rounded-lg ${
+                          className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-lg ${
                             dayOff
-                              ? 'bg-rose-200 text-rose-950 border border-rose-300 font-black'
+                              ? 'bg-rose-200 text-rose-950 border border-rose-300 font-bold'
                               : isToday
-                              ? 'bg-purple-800 text-white shadow-xs font-black'
+                              ? 'bg-purple-800 text-white shadow-xs font-bold'
                               : isSelected
-                              ? 'bg-purple-600 text-white font-black'
+                              ? 'bg-purple-600 text-white font-bold'
                               : isPast
                               ? 'text-slate-400 font-semibold bg-slate-100/80'
                               : hasApts
-                              ? 'bg-purple-100 text-purple-950 border border-purple-200 font-black'
+                              ? 'bg-purple-100 text-purple-950 border border-purple-200 font-bold'
                               : isWeekend
-                              ? 'bg-amber-200/80 text-amber-950 font-black'
+                              ? 'bg-amber-200/80 text-amber-950 font-bold'
                               : 'bg-purple-50 text-purple-950 font-bold'
                           }`}
                         >
@@ -711,13 +711,13 @@ export default function AdminHourlyCalendar({
                         </span>
 
                         {isToday && (
-                          <span className="text-[9px] font-black text-purple-900 bg-purple-200/90 px-1.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
+                          <span className="text-[9px] font-bold text-purple-900 bg-purple-200/90 px-1.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-pulse" />
                             Днес
                           </span>
                         )}
                         {dayOff && cell.isCurrentMonth && (
-                          <span className="text-[9px] font-black text-rose-800 bg-rose-100 px-1.5 py-0.5 rounded-md border border-rose-300 flex items-center gap-1 shadow-2xs">
+                          <span className="text-[9px] font-bold text-rose-800 bg-rose-100 px-1.5 py-0.5 rounded-md border border-rose-300 flex items-center gap-1 shadow-2xs">
                             <span>🏖️</span>
                             <span>Отпуск</span>
                           </span>
@@ -731,7 +731,7 @@ export default function AdminHourlyCalendar({
 
                       {/* Total appointment count badge if > 0 */}
                       {hasApts && (
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-linear-to-r from-purple-700 to-violet-700 text-white shadow-xs flex items-center gap-1">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-linear-to-r from-purple-700 to-purple-700 text-white shadow-xs flex items-center gap-1">
                           <span>{totalCount}</span>
                           <span className="text-[8px] font-semibold">{totalCount === 1 ? 'час' : 'часа'}</span>
                         </span>
@@ -741,10 +741,10 @@ export default function AdminHourlyCalendar({
                     {/* Center Reason Badge if Day Off */}
                     {dayOff && cell.isCurrentMonth ? (
                       <div className="z-10 relative my-auto py-1 px-2 rounded-xl bg-white/95 border-2 border-rose-300 text-rose-950 shadow-xs">
-                        <span className="text-[8px] font-black uppercase tracking-wider text-rose-600 block leading-tight">
+                        <span className="text-[8px] font-bold uppercase tracking-wider text-rose-600 block leading-tight">
                           Основание:
                         </span>
-                        <p className="text-[11px] font-black text-rose-950 line-clamp-2 leading-tight mt-0.5">
+                        <p className="text-[11px] font-bold text-rose-950 line-clamp-2 leading-tight mt-0.5">
                           {dayOff.reason}
                         </p>
                       </div>
@@ -775,7 +775,7 @@ export default function AdminHourlyCalendar({
                               title={`${formatTimeHHmm(apt.start_time)} - ${apt.patient_name} (${apt.service_title || 'Преглед'})`}
                             >
                               <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isCompleted ? 'bg-teal-500' : 'bg-purple-600'}`} />
-                              <span className="font-mono text-purple-800 shrink-0 font-black">
+                              <span className="font-mono text-purple-800 shrink-0 font-bold">
                                 {formatTimeHHmm(apt.start_time)}
                               </span>
                               <span className="truncate">{apt.patient_name}</span>
@@ -791,7 +791,7 @@ export default function AdminHourlyCalendar({
                               onSelectDate(cell.dateStr);
                               setViewMode('day');
                             }}
-                            className="w-full text-left px-1 text-[10px] font-black text-purple-700 hover:text-purple-900 hover:underline"
+                            className="w-full text-left px-1 text-[10px] font-bold text-purple-700 hover:text-purple-900 hover:underline"
                           >
                             +{totalCount - 3} още
                           </button>
@@ -829,12 +829,12 @@ export default function AdminHourlyCalendar({
             const activeDayOff = getDayOffForDate(activeDate, daysOff);
 
             return (
-              <div className="bg-linear-to-br from-white via-purple-50/20 to-violet-50/30 rounded-3xl border-2 border-purple-200 p-4 sm:p-5 shadow-sm space-y-3.5">
+              <div className="bg-linear-to-br from-white via-purple-50/20 to-purple-50/30 rounded-3xl border border-purple-100 p-4 sm:p-5 shadow-sm space-y-3.5">
                 <div className="flex items-center justify-between border-b border-purple-100 pb-3 flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full bg-purple-600 ring-2 ring-purple-300" />
                     <h3 className="font-serif text-sm sm:text-base font-bold text-slate-900">
-                      {formatBulgarianDate(activeDate)}: <strong className="text-purple-900 font-black">{activeDayAppointments.length} {activeDayAppointments.length === 1 ? 'пациент' : 'пациенти'}</strong>
+                      {formatBulgarianDate(activeDate)}: <strong className="text-purple-900 font-bold">{activeDayAppointments.length} {activeDayAppointments.length === 1 ? 'пациент' : 'пациенти'}</strong>
                     </h3>
                   </div>
 
@@ -842,7 +842,7 @@ export default function AdminHourlyCalendar({
                     <button
                       type="button"
                       onClick={() => setViewMode('day')}
-                      className="text-xs font-black text-purple-700 hover:text-purple-900 hover:underline cursor-pointer"
+                      className="text-xs font-bold text-purple-700 hover:text-purple-900 hover:underline cursor-pointer"
                     >
                       Дневен изглед &rarr;
                     </button>
@@ -867,11 +867,11 @@ export default function AdminHourlyCalendar({
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-[9px] font-black uppercase text-rose-700 tracking-wider bg-rose-100 px-1.5 py-0.5 rounded-md border border-rose-200">
+                        <span className="text-[9px] font-bold uppercase text-rose-700 tracking-wider bg-rose-100 px-1.5 py-0.5 rounded-md border border-rose-200">
                           Обявен неработен период / Отпуск
                         </span>
                       </div>
-                      <h4 className="text-sm font-black text-rose-950 mt-0.5">
+                      <h4 className="text-sm font-bold text-rose-950 mt-0.5">
                         Основание: <span className="underline decoration-rose-400">{activeDayOff.reason}</span>
                       </h4>
                       <p className="text-[11px] text-rose-700 font-medium">
@@ -884,7 +884,7 @@ export default function AdminHourlyCalendar({
                 {activeDayAppointments.length === 0 ? (
                   <div className="py-7 text-center text-xs text-slate-500 space-y-2.5 bg-white/70 rounded-2xl border border-dashed border-purple-200">
                     <div className="text-2xl">{activeDayOff ? '🏖️' : '🌤️'}</div>
-                    <p className="font-black text-purple-950 text-sm">
+                    <p className="font-bold text-purple-950 text-sm">
                       {activeDayOff ? `Неработен ден: ${activeDayOff.reason}` : 'Свободен ден — няма записани часове'}
                     </p>
                     <p className="text-slate-500 text-xs max-w-sm mx-auto">
@@ -896,7 +896,7 @@ export default function AdminHourlyCalendar({
                       <button
                         type="button"
                         onClick={() => onNewAppointmentAt(activeDate, '10:00')}
-                        className="mt-1 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-linear-to-r from-purple-700 to-violet-800 hover:from-purple-800 hover:to-violet-900 text-white font-black text-xs shadow-xs cursor-pointer transition-colors"
+                        className="mt-1 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-linear-to-r from-purple-700 to-purple-800 hover:from-purple-800 hover:to-purple-900 text-white font-bold text-xs shadow-xs cursor-pointer transition-colors"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         <span>+ Запиши пациент</span>
@@ -938,11 +938,11 @@ export default function AdminHourlyCalendar({
                   onClick={() => onSelectDate(day.dateStr)}
                   className={`p-2.5 rounded-2xl flex flex-col items-center justify-center shrink-0 min-w-16 border-2 transition-all cursor-pointer relative overflow-hidden ${
                     isSelected
-                      ? 'bg-linear-to-br from-purple-700 to-violet-800 text-white border-purple-700 shadow-sm'
+                      ? 'bg-linear-to-br from-purple-700 to-purple-800 text-white border-purple-700 shadow-sm'
                       : dayOff
-                      ? 'bg-rose-50 border-rose-300 text-rose-950 font-black'
+                      ? 'bg-rose-50 border-rose-300 text-rose-950 font-bold'
                       : day.isToday
-                      ? 'bg-linear-to-b from-purple-100 to-violet-100 text-purple-950 border-purple-600 font-black ring-2 ring-purple-400/40'
+                      ? 'bg-linear-to-b from-purple-100 to-purple-100 text-purple-950 border-purple-600 font-bold ring-2 ring-purple-400/40'
                       : isPast
                       ? isWeekend
                         ? 'bg-amber-50/30 text-slate-400 border-slate-200 opacity-55'
@@ -956,16 +956,16 @@ export default function AdminHourlyCalendar({
                       : 'bg-white text-purple-950 border-purple-150 font-bold'
                   }`}
                 >
-                  <span className={`text-[10px] uppercase font-black ${
+                  <span className={`text-[10px] uppercase font-bold ${
                     dayOff ? 'text-rose-700' : isWeekend && !isSelected ? 'text-amber-800' : ''
                   }`}>
                     {day.dayNameShort}
                   </span>
-                  <span className="text-base font-black my-0.5">{day.dayNum}</span>
+                  <span className="text-base font-bold my-0.5">{day.dayNum}</span>
                   {dayOff ? (
                     <span className="text-[10px]">🏖️</span>
                   ) : count > 0 ? (
-                    <span className={`text-[9px] font-black px-1.5 rounded-full ${isSelected ? 'bg-white text-purple-900' : 'bg-purple-700 text-white'}`}>
+                    <span className={`text-[9px] font-bold px-1.5 rounded-full ${isSelected ? 'bg-white text-purple-900' : 'bg-purple-700 text-white'}`}>
                       {count}
                     </span>
                   ) : (
@@ -977,7 +977,7 @@ export default function AdminHourlyCalendar({
           </div>
 
           {/* Desktop/Tablet 7-Column Grid (md: and above) */}
-          <div className="hidden sm:grid grid-cols-7 gap-2.5 bg-white rounded-3xl border-2 border-purple-200 shadow-md shadow-purple-950/5 p-3.5 sm:p-5">
+          <div className="hidden sm:grid grid-cols-7 gap-2.5 bg-white rounded-3xl border border-purple-100 shadow-md shadow-purple-950/5 p-3.5 sm:p-5">
             {weekDays.map((day, idx) => {
               const isWeekend = idx >= 5;
               const dayApts = appointmentsMapByDate[day.dateStr] || [];
@@ -994,7 +994,7 @@ export default function AdminHourlyCalendar({
                     dayOff
                       ? 'bg-rose-50/60 border-rose-300 ring-2 ring-rose-200/50 shadow-2xs'
                       : day.isToday
-                      ? 'bg-linear-to-b from-purple-100/90 to-violet-50/80 border-purple-600 ring-4 ring-purple-500/25 shadow-md'
+                      ? 'bg-linear-to-b from-purple-100/90 to-purple-50/80 border-purple-600 ring-4 ring-purple-500/25 shadow-md'
                       : isSelected
                       ? 'bg-purple-50 border-purple-600 ring-2 ring-purple-400/40 shadow-sm'
                       : isPast
@@ -1024,24 +1024,24 @@ export default function AdminHourlyCalendar({
                   }`}>
                     <div>
                       <div className="flex items-center gap-1">
-                        <span className={`text-[10px] font-black uppercase block ${
+                        <span className={`text-[10px] font-bold uppercase block ${
                           dayOff ? 'text-rose-700' : isWeekend ? 'text-amber-800' : 'text-purple-900'
                         }`}>
                           {day.dayNameShort}
                         </span>
                         {dayOff ? (
-                          <span className="text-[8px] font-black text-rose-800 bg-rose-100 px-1 py-0.2 rounded-sm border border-rose-200 flex items-center gap-0.5">
+                          <span className="text-[8px] font-bold text-rose-800 bg-rose-100 px-1 py-0.2 rounded-sm border border-rose-200 flex items-center gap-0.5">
                             🏖️ Отпуск
                           </span>
                         ) : isWeekend ? (
-                          <span className="text-[8px] font-black text-amber-800 bg-amber-100 px-1 py-0.2 rounded-sm border border-amber-200">
+                          <span className="text-[8px] font-bold text-amber-800 bg-amber-100 px-1 py-0.2 rounded-sm border border-amber-200">
                             Уикенд
                           </span>
                         ) : null}
                       </div>
                       <div className="flex items-center gap-1 mt-0.5">
-                        <span className={`text-base font-black ${
-                          dayOff ? 'text-rose-950' : day.isToday ? 'text-purple-950 font-black' : isWeekend ? 'text-amber-950 font-black' : isPast ? 'text-slate-400' : 'text-purple-950'
+                        <span className={`text-base font-bold ${
+                          dayOff ? 'text-rose-950' : day.isToday ? 'text-purple-950 font-bold' : isWeekend ? 'text-amber-950 font-bold' : isPast ? 'text-slate-400' : 'text-purple-950'
                         }`}>
                           {day.dayNum}
                         </span>
@@ -1072,11 +1072,11 @@ export default function AdminHourlyCalendar({
                   <div className="space-y-2 flex-1 min-h-[120px] z-10 relative">
                     {dayOff ? (
                       <div className="p-3 rounded-xl bg-white/95 border-2 border-rose-300 shadow-xs space-y-1.5">
-                        <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-rose-700">
+                        <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-rose-700">
                           <CalendarOff className="w-3.5 h-3.5 text-rose-600 shrink-0" />
                           <span>Почивен / Отпуск</span>
                         </div>
-                        <p className="text-xs font-black text-rose-950 leading-snug">
+                        <p className="text-xs font-bold text-rose-950 leading-snug">
                           {dayOff.reason}
                         </p>
                         <p className="text-[10px] text-rose-600 font-bold">
@@ -1120,7 +1120,7 @@ export default function AdminHourlyCalendar({
             const activeDayOff = getDayOffForDate(activeDate, daysOff);
 
             return (
-              <div className="sm:hidden bg-white rounded-3xl border-2 border-purple-200 p-4 shadow-xs space-y-3">
+              <div className="sm:hidden bg-white rounded-3xl border border-purple-100 p-4 shadow-xs space-y-3">
                 <div className="flex items-center justify-between border-b border-purple-100 pb-2.5">
                   <h3 className="font-bold text-purple-950 text-sm">
                     {formatBulgarianDate(activeDate)} ({activeDayAppointments.length} пациента)
@@ -1139,8 +1139,8 @@ export default function AdminHourlyCalendar({
 
                 {activeDayOff && (
                   <div className="p-3 bg-rose-50 rounded-2xl border-2 border-rose-300 text-rose-950 space-y-1">
-                    <div className="text-[10px] font-black uppercase text-rose-700">Обявен неработен ден / Отпуск</div>
-                    <div className="font-black text-xs text-rose-950">Основание: {activeDayOff.reason}</div>
+                    <div className="text-[10px] font-bold uppercase text-rose-700">Обявен неработен ден / Отпуск</div>
+                    <div className="font-bold text-xs text-rose-950">Основание: {activeDayOff.reason}</div>
                     <div className="text-[10px] text-rose-700">
                       Период: {formatBulgarianDate(activeDayOff.start_date)} — {formatBulgarianDate(activeDayOff.end_date)}
                     </div>
@@ -1170,12 +1170,12 @@ export default function AdminHourlyCalendar({
         <div className="space-y-4">
           
           {/* Day Headline */}
-          <div className="bg-linear-to-r from-purple-50/80 via-white to-violet-50/60 rounded-3xl border-2 border-purple-200 p-4 sm:p-5 shadow-sm space-y-3">
+          <div className="bg-linear-to-r from-purple-50/80 via-white to-purple-50/60 rounded-3xl border border-purple-100 p-4 sm:p-5 shadow-sm space-y-3">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
                 <div className="flex items-center gap-2">
                   <div className="w-2.5 h-2.5 rounded-full bg-purple-600 ring-2 ring-purple-300" />
-                  <h3 className="font-serif text-base sm:text-xl font-black text-purple-950">
+                  <h3 className="font-serif text-base sm:text-xl font-bold text-purple-950">
                     {formatBulgarianDate(activeDate)}
                   </h3>
                 </div>
@@ -1188,7 +1188,7 @@ export default function AdminHourlyCalendar({
                 <button
                   type="button"
                   onClick={() => setShowFullTimeline(!showFullTimeline)}
-                  className="text-xs font-black text-purple-800 hover:text-purple-950 px-3 py-1.5 rounded-xl border border-purple-200 bg-purple-100/70 hover:bg-purple-200/70 transition-colors cursor-pointer"
+                  className="text-xs font-bold text-purple-800 hover:text-purple-950 px-3 py-1.5 rounded-xl border border-purple-200 bg-purple-100/70 hover:bg-purple-200/70 transition-colors cursor-pointer"
                 >
                   {showFullTimeline ? 'Скрий часовата линия' : 'Покажи часовата линия'}
                 </button>
@@ -1196,7 +1196,7 @@ export default function AdminHourlyCalendar({
                 <button
                   type="button"
                   onClick={() => onNewAppointmentAt(activeDate, '10:00')}
-                  className="px-3.5 py-1.5 rounded-xl bg-linear-to-r from-purple-700 to-violet-800 hover:from-purple-800 hover:to-violet-900 text-white text-xs font-black flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-xl bg-linear-to-r from-purple-700 to-purple-800 hover:from-purple-800 hover:to-purple-900 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Запиши за {formatBulgarianDate(activeDate).split(' ')[0]}</span>
@@ -1214,10 +1214,10 @@ export default function AdminHourlyCalendar({
                     🏖️
                   </div>
                   <div className="min-w-0 flex-1">
-                    <span className="text-[9px] font-black uppercase text-rose-700 tracking-wider bg-rose-100 px-1.5 py-0.5 rounded-md border border-rose-200">
+                    <span className="text-[9px] font-bold uppercase text-rose-700 tracking-wider bg-rose-100 px-1.5 py-0.5 rounded-md border border-rose-200">
                       Обявен неработен период / Отпуск
                     </span>
-                    <h4 className="text-sm font-black text-rose-950 mt-0.5">
+                    <h4 className="text-sm font-bold text-rose-950 mt-0.5">
                       Основание: <span className="underline decoration-rose-400">{activeDayOff.reason}</span>
                     </h4>
                     <p className="text-[11px] text-rose-700 font-medium">
@@ -1234,14 +1234,14 @@ export default function AdminHourlyCalendar({
             {activeDayAppointments.length === 0 ? (
               <div className="bg-white rounded-3xl border border-purple-100 p-8 sm:p-12 text-center text-slate-500 text-xs space-y-3 shadow-xs">
                 <Coffee className="w-8 h-8 text-purple-400 mx-auto" />
-                <p className="font-black text-purple-950 text-sm">Няма записани пациенти за този ден</p>
+                <p className="font-bold text-purple-950 text-sm">Няма записани пациенти за този ден</p>
                 <p className="text-slate-500 max-w-sm mx-auto">
                   Графикът за {formatBulgarianDate(activeDate)} е напълно свободен. Използвайте свободните интервали по-долу за записване.
                 </p>
                 <button
                   type="button"
                   onClick={() => onNewAppointmentAt(activeDate, '10:00')}
-                  className="inline-flex items-center gap-1 px-4 py-2 rounded-2xl bg-linear-to-r from-purple-700 to-violet-800 text-white font-black text-xs shadow-sm hover:from-purple-800 hover:to-violet-900 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1 px-4 py-2 rounded-2xl bg-purple-800 text-white font-bold text-xs shadow-sm hover:from-purple-800 hover:to-purple-900 transition-colors cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Запиши пациент</span>
@@ -1253,9 +1253,9 @@ export default function AdminHourlyCalendar({
           </div>
 
           {/* Section 2: Quick free slots grid to book walk-ins */}
-          <div className="bg-linear-to-br from-white via-purple-50/20 to-violet-50/30 rounded-3xl border border-purple-200 p-4 sm:p-5 shadow-xs space-y-3">
+          <div className="bg-linear-to-br from-white via-purple-50/20 to-purple-50/30 rounded-3xl border border-purple-200 p-4 sm:p-5 shadow-xs space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-black text-purple-950 uppercase tracking-wider">
+              <span className="text-xs font-bold text-purple-950 uppercase tracking-wider">
                 Свободни интервали за записване ({formatBulgarianDate(activeDate)}):
               </span>
               <span className="text-[11px] text-purple-700 font-semibold">Натиснете час за добавяне</span>
@@ -1286,7 +1286,7 @@ export default function AdminHourlyCalendar({
                       key={slot}
                       className="p-2 rounded-xl bg-purple-100 border border-purple-200 text-center opacity-80"
                     >
-                      <span className="font-mono text-xs font-black text-purple-950 block">{slot}</span>
+                      <span className="font-mono text-xs font-bold text-purple-950 block">{slot}</span>
                       <span className="text-[10px] text-purple-700 font-bold">Зает</span>
                     </div>
                   );
@@ -1322,7 +1322,7 @@ export default function AdminHourlyCalendar({
           {/* Section 3: Optional Full Timeline */}
           {showFullTimeline && (
             <div className="bg-white rounded-3xl border border-purple-200 shadow-xs overflow-hidden p-4 sm:p-5 space-y-3">
-              <h4 className="font-serif text-sm font-black text-purple-950 mb-2">
+              <h4 className="font-serif text-sm font-bold text-purple-950 mb-2">
                 Пълна часова хронология
               </h4>
               <div className="divide-y divide-purple-100">
@@ -1347,7 +1347,7 @@ export default function AdminHourlyCalendar({
 
                   return (
                     <div key={slot} className="py-2.5 flex items-center gap-4">
-                      <span className="font-mono text-xs font-black text-purple-950 w-16 shrink-0">
+                      <span className="font-mono text-xs font-bold text-purple-950 w-16 shrink-0">
                         {slot}
                       </span>
                       <div className="flex-1">
@@ -1356,7 +1356,7 @@ export default function AdminHourlyCalendar({
                             {startingInSlot.map((a) => (
                               <div key={a.id} className="text-xs font-bold text-purple-950 bg-purple-50 p-2 rounded-xl border border-purple-200 flex justify-between">
                                 <span>{a.patient_name} ({a.service_title})</span>
-                                <span className="font-mono font-black">{formatTimeHHmm(a.start_time)} – {formatTimeHHmm(a.end_time)}</span>
+                                <span className="font-mono font-bold">{formatTimeHHmm(a.start_time)} – {formatTimeHHmm(a.end_time)}</span>
                               </div>
                             ))}
                           </div>
@@ -1383,16 +1383,16 @@ export default function AdminHourlyCalendar({
       {/* ───────────────────────────────────────────────────────── */}
       {detailAppointment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-4 sm:p-7 space-y-4 animate-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-3xl border border-purple-100 shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-4 sm:p-7 space-y-4 animate-in zoom-in-95 duration-150">
             
             {/* Modal Header */}
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-linear-to-br from-purple-700 via-violet-700 to-indigo-800 text-white flex items-center justify-center shadow-md shadow-purple-950/20 shrink-0">
+                <div className="w-11 h-11 rounded-2xl bg-linear-to-br from-purple-700 via-purple-700 to-indigo-800 text-white flex items-center justify-center shadow-md shadow-purple-950/20 shrink-0">
                   <User className="w-5 h-5 text-purple-100" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="font-serif text-base sm:text-lg font-black text-purple-950 leading-snug truncate">
+                  <h3 className="font-serif text-base sm:text-lg font-bold text-purple-950 leading-snug truncate">
                     {detailAppointment.patient_name}
                   </h3>
                   <span className="text-xs text-purple-800 font-medium block">
@@ -1411,10 +1411,10 @@ export default function AdminHourlyCalendar({
             </div>
 
             {/* Appointment Details Box */}
-            <div className="bg-linear-to-br from-purple-50/80 to-violet-50/60 rounded-2xl p-4 border border-purple-200 space-y-2.5 text-xs text-purple-950">
+            <div className="bg-linear-to-br from-purple-50/80 to-purple-50/60 rounded-2xl p-4 border border-purple-200 space-y-2.5 text-xs text-purple-950">
               <div className="flex items-center justify-between pb-2 border-b border-purple-200/70">
                 <span className="text-purple-800/80 font-medium">Процедура:</span>
-                <span className="font-black text-purple-950 text-right">{detailAppointment.service_title || 'Преглед'}</span>
+                <span className="font-bold text-purple-950 text-right">{detailAppointment.service_title || 'Преглед'}</span>
               </div>
               <div className="flex items-center justify-between pb-2 border-b border-purple-200/70">
                 <span className="text-purple-800/80 font-medium">Времетраене:</span>
@@ -1423,12 +1423,12 @@ export default function AdminHourlyCalendar({
               {detailAppointment.service_price !== undefined && (
                 <div className="flex items-center justify-between pb-2 border-b border-purple-200/70">
                   <span className="text-purple-800/80 font-medium">Цена:</span>
-                  <span className="font-black text-purple-950 text-sm">{detailAppointment.service_price} €</span>
+                  <span className="font-bold text-purple-950 text-sm">{detailAppointment.service_price} €</span>
                 </div>
               )}
               <div className="flex items-center justify-between">
                 <span className="text-purple-800/80 font-medium">Статус:</span>
-                <span className={`font-black px-2.5 py-0.5 rounded-full text-[10px] ${
+                <span className={`font-bold px-2.5 py-0.5 rounded-full text-[10px] ${
                   detailAppointment.status === 'confirmed'
                     ? 'bg-purple-700 text-white'
                     : detailAppointment.status === 'completed'
@@ -1443,7 +1443,7 @@ export default function AdminHourlyCalendar({
             {/* Clinical Note */}
             {detailAppointment.notes && (
               <div className="bg-purple-50/40 p-3 rounded-2xl border border-purple-100 text-xs">
-                <span className="font-black text-purple-900 block mb-0.5">Оплакване / Бележка:</span>
+                <span className="font-bold text-purple-900 block mb-0.5">Оплакване / Бележка:</span>
                 <p className="text-purple-950 italic">„{detailAppointment.notes}“</p>
               </div>
             )}
@@ -1574,7 +1574,7 @@ export default function AdminHourlyCalendar({
         {/* Top Header: Time, Price & Status */}
         <div className="flex items-center justify-between gap-1.5 flex-wrap">
           <div className="flex items-center gap-1.5">
-            <span className="font-mono text-xs font-black text-purple-950 bg-purple-100 px-2 py-0.5 rounded-md flex items-center gap-1">
+            <span className="font-mono text-xs font-bold text-purple-950 bg-purple-100 px-2 py-0.5 rounded-md flex items-center gap-1">
               <Clock className="w-3 h-3 text-purple-600" />
               <span>{formatTimeHHmm(apt.start_time)} – {formatTimeHHmm(apt.end_time)}</span>
             </span>
@@ -1582,7 +1582,7 @@ export default function AdminHourlyCalendar({
 
           <div className="flex items-center gap-1.5">
             {apt.service_price !== undefined && (
-              <span className="text-xs font-black text-purple-950 bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200">
+              <span className="text-xs font-bold text-purple-950 bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200">
                 {apt.service_price} €
               </span>
             )}
@@ -1605,7 +1605,7 @@ export default function AdminHourlyCalendar({
           <div
             className={`w-8 h-8 rounded-xl bg-linear-to-br ${getAvatarGradient(
               apt.patient_name
-            )} text-white font-black text-xs flex items-center justify-center shadow-2xs shrink-0`}
+            )} text-white font-bold text-xs flex items-center justify-center shadow-2xs shrink-0`}
           >
             {getPatientInitials(apt.patient_name)}
           </div>
@@ -1711,7 +1711,7 @@ export default function AdminHourlyCalendar({
 
             <div className="flex items-center gap-2 shrink-0">
               {apt.service_price !== undefined && (
-                <span className="font-black text-purple-950 bg-purple-100 px-2.5 py-1 rounded-xl text-sm border border-purple-200 shadow-2xs">
+                <span className="font-bold text-purple-950 bg-purple-100 px-2.5 py-1 rounded-xl text-sm border border-purple-200 shadow-2xs">
                   {apt.service_price} €
                 </span>
               )}
