@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { WorkingHour } from '@/types/database';
 import { ExternalLink } from 'lucide-react';
 
@@ -19,6 +20,7 @@ export default function ContactSection({ workingHours }: ContactSectionProps) {
 
         {/* Header */}
         <div className="max-w-xl mb-12 sm:mb-16">
+          <span className="eyebrow">ОЧАКВАМЕ ВИ</span>
           <h2 className="font-serif text-3xl sm:text-4xl font-normal text-slate-900 tracking-tight mb-3">
             Контакти и работно време
           </h2>
@@ -27,10 +29,10 @@ export default function ContactSection({ workingHours }: ContactSectionProps) {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
           {/* Contact info */}
-          <div className="bg-gray-50 rounded-xl border border-gray-200 p-7 space-y-5">
+          <div className="bg-white rounded-3xl border border-purple-100 p-7 sm:p-9 space-y-5">
 
             <div className="space-y-1">
               <span className="text-sm font-medium text-slate-400 block">Адрес</span>
@@ -46,7 +48,7 @@ export default function ContactSection({ workingHours }: ContactSectionProps) {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-sm text-purple-700 hover:text-purple-900 mt-1"
               >
-                <span>Google Maps</span>
+                <span>Упътване до кабинета</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
@@ -77,7 +79,7 @@ export default function ContactSection({ workingHours }: ContactSectionProps) {
           </div>
 
           {/* Working hours */}
-          <div className="bg-gray-50 rounded-xl border border-gray-200 p-7 space-y-4">
+          <div className="bg-white rounded-3xl border border-purple-100 p-7 sm:p-9 space-y-4">
             <span className="text-sm font-medium text-slate-400 block">Работно време</span>
 
             <div className="divide-y divide-gray-200 text-sm">
@@ -100,6 +102,7 @@ export default function ContactSection({ workingHours }: ContactSectionProps) {
 
         </div>
 
+        <div className="contact-cta"><div><span className="eyebrow">НЕ ОТЛАГАЙТЕ ГРИЖАТА ЗА СЕБЕ СИ</span><h3>Вашата усмивка започва оттук.</h3></div><Link href="/zapisi-chas" className="clinic-button">Запазете час <ExternalLink size={18} /></Link></div>
       </div>
     </section>
   );

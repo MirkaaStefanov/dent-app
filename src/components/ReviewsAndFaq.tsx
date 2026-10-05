@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { ChevronDown } from 'lucide-react';
 
 const faqs = [
@@ -35,18 +36,20 @@ export default function ReviewsAndFaq() {
 
   return (
     <section id="faq" className="py-16 sm:py-24 bg-gray-50/50">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="clinic-container faq-grid">
 
         {/* Header */}
-        <div className="mb-12 sm:mb-16">
+        <div className="faq-intro">
+          <span className="eyebrow">ПРЕДИ ПОСЕЩЕНИЕТО</span>
           <h2 className="font-serif text-3xl sm:text-4xl font-normal text-slate-900 tracking-tight mb-3">
             Често задавани въпроси
           </h2>
           <p className="text-base text-slate-500">
-            Информация за Вашето посещение при Д-р Джанел Аяз.
+            Малко повече яснота. Малко по-малко притеснение.
           </p>
+          <Link href="/zapisi-chas" className="clinic-text-link">Запазете час →</Link>
         </div>
-
+        <div>
         {/* FAQ Accordion */}
         <div className="divide-y divide-gray-200">
           {faqs.map((faq, index) => {
@@ -58,6 +61,8 @@ export default function ReviewsAndFaq() {
                   className="w-full flex items-center justify-between text-left focus:outline-hidden group"
                   onClick={() => toggleFaq(index)}
                   aria-expanded={isOpen}
+                  aria-controls={`faq-answer-${index}`}
+                  id={`faq-question-${index}`}
                 >
                   <span className={`text-base font-medium transition-colors pr-4 ${isOpen ? 'text-purple-800' : 'text-slate-900 group-hover:text-purple-700'}`}>
                     {faq.q}
@@ -67,7 +72,7 @@ export default function ReviewsAndFaq() {
                   </div>
                 </button>
                 {isOpen && (
-                  <div className="pt-3 text-sm text-slate-500 leading-relaxed pr-8">
+                  <div id={`faq-answer-${index}`} role="region" aria-labelledby={`faq-question-${index}`} className="pt-3 text-sm text-slate-500 leading-relaxed pr-8">
                     {faq.a}
                   </div>
                 )}
@@ -84,6 +89,7 @@ export default function ReviewsAndFaq() {
           </a>
         </div>
 
+        </div>
       </div>
     </section>
   );

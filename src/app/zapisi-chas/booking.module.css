@@ -1,0 +1,22 @@
+.page { min-height: 100vh; background: #f7f2fa; padding: 0 24px 48px; }
+.layout { max-width: 1200px; margin: auto; display: grid; grid-template-columns: .85fr 1.15fr; gap: 72px; align-items: start; padding: 48px 0; }
+.aside { position: sticky; top: 48px; padding-top: 10px; color: #392842; }
+.brand { display: flex; align-items: center; gap: 12px; font: 22px var(--font-serif); margin-bottom: 70px; }
+.brand svg { width: 38px; height: 42px; color: #754593; --mark-line: #f7f2fa; }
+.aside h2 { font: 46px/1.18 var(--font-serif); letter-spacing: -.035em; margin: 22px 0; }
+.aside em { color: #8b60a2; }
+.aside > p { font-size: 14px; line-height: 1.9; color: #786980; max-width: 340px; }
+.aside ol { display: grid; gap: 25px; margin: 40px 0; }
+.aside li { display: flex; align-items: center; gap: 16px; }
+.aside li > span { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid #ddcde6; border-radius: 50%; color: #916da4; font-size: 11px; }
+.aside strong { font-size: 13px; font-weight: 600; display: block; }
+.aside small { font-size: 11px; color: #8c7b95; display: block; margin-top: 4px; }
+.help { display: flex; gap: 14px; align-items: center; border-top: 1px solid #e2d7e8; padding-top: 25px; color: #7b538f; font-size: 11px; }
+.help strong { margin-top: 5px; font-size: 17px; }
+.formArea { min-width: 0; }
+.card { box-shadow: 0 16px 50px #53326008; border-color: #e9dfef; }
+.card h1 { font-size: 34px; font-weight: 400; margin: 14px 0; }
+.card input, .card textarea { background: #fcfafd; min-height: 46px; border-color: #e1d6e7; }
+.card button { min-height: 42px; }
+@media (max-width: 1023px) { .layout { gap: 35px; } .aside h2 { font-size: 38px; } }
+@media (max-width: 767px) { .page { padding: 0 16px 30px; } .layout { display: block; padding-top: 24px; } .aside { display: none; } .card { padding: 25px 18px; } .card h1 { font-size: 29px; } }

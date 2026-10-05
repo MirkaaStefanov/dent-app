@@ -5,16 +5,16 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-slate-900 text-slate-400 py-10">
+    <footer className="clinic-footer text-purple-200/70 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-slate-800">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-purple-200/15">
 
           <div>
             <span className="font-serif text-lg text-white font-semibold block">
               Д-р Джанел Аяз
             </span>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-purple-200/60 mt-0.5">
               Стоматологичен кабинет · гр. Търговище
             </p>
           </div>
@@ -36,7 +36,7 @@ export default function Footer() {
 
         </div>
 
-        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-purple-200/60">
           <div>
             &copy; {currentYear} Д-р Джанел Аяз. Всички права запазени.
           </div>
@@ -47,7 +47,7 @@ export default function Footer() {
             </a>
             <Link
               href="/admin"
-              className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-300 transition-colors"
+              className="inline-flex items-center gap-1 text-purple-200/70 hover:text-white transition-colors"
             >
               <Lock className="w-3 h-3" />
               <span>Вход за лекар</span>

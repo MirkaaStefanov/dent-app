@@ -88,3 +88,32 @@ button:not(:disabled), a { touch-action: manipulation; }
 @media (max-width: 1023px) { .hero-grid { gap: 32px; } .smile-art { min-height: 460px; } .about-grid { gap: 48px; } }
 @media (max-width: 767px) { .clinic-container { padding: 0 22px; } .clinic-hero { padding-top: 38px; } .hero-grid, .about-grid { grid-template-columns: 1fr; gap: 42px; } .hero-copy h1 { font-size: 46px; } .hero-copy > p { font-size: 14px; } .hero-actions { gap: 20px; } .smile-art { min-height: 460px; max-width: 480px; width: 100%; margin-inline: auto; } .hero-footnote { margin-top: 52px; flex-wrap: wrap; justify-content: center; font-size: 8px; gap: 16px 24px; } .clinic-about { padding: 64px 0; } .doctor-card { max-width: 480px; width: 100%; margin: auto; } .art-caption { font-size: 21px; } }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; } }
+
+@theme {
+  --color-purple-50: #f7f2fa;
+  --color-purple-100: #eee3f4;
+  --color-purple-200: #dec9e9;
+  --color-purple-300: #c9abd9;
+  --color-purple-400: #b18ac5;
+  --color-purple-500: #9a6fb2;
+  --color-purple-600: #8858a0;
+  --color-purple-700: #78458f;
+  --color-purple-800: #693c7f;
+  --color-purple-900: #533061;
+  --color-purple-950: #34203e;
+}
+.hero-tooth { position: absolute; width: 55%; height: 58%; top: 21%; left: 22.5%; color: #f7effb; --mark-line: #8b65a0; filter: drop-shadow(0 20px 18px #2e173a44); transform: rotate(-8deg); }
+.brand-mark { width: 40px; height: 44px; display: grid; place-items: center; background: #f3eaf7; border-radius: 12px; color: #82529a; }
+.brand-mark svg { width: 28px; height: 32px; --mark-line: #f3eaf7; }
+.faq-grid { display: grid; grid-template-columns: .85fr 1.15fr; gap: 80px; }
+.faq-intro h2 { margin-top: 18px; line-height: 1.2; }
+.faq-intro p { font-size: 14px; line-height: 1.8; max-width: 300px; }
+.faq-intro .clinic-text-link { margin-top: 28px; }
+.clinic-home #faq { background: white; }
+.clinic-home #faq button { min-height: 44px; }
+.clinic-home #faq button > div { width: 30px; height: 30px; border-radius: 50%; background: #f4edf8; display: grid; place-items: center; }
+.clinic-home #contacts h2 { margin-top: 18px; }
+.contact-cta { display: flex; align-items: center; justify-content: space-between; gap: 28px; border-top: 1px solid #dfd0e7; padding-top: 45px; margin-top: 50px; }
+.contact-cta h3 { font-family: var(--font-serif); font-size: 32px; letter-spacing: -.025em; margin-top: 12px; }
+.clinic-footer { background: #34203e; }
+@media (max-width: 767px) { .faq-grid { grid-template-columns: 1fr; gap: 28px; } .contact-cta { align-items: start; flex-direction: column; } .contact-cta h3 { font-size: 28px; } .brand-mark { width: 34px; height: 38px; } .hero-copy h1 { font-size: clamp(36px, 10.6vw, 46px); } }

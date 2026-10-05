@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import ClinicMark from './ClinicMark';
 import { ArrowUpRight, ArrowRight, Calendar, Check, Sparkles } from 'lucide-react';
 
 export default function Hero() {
@@ -15,11 +16,11 @@ export default function Hero() {
           </div>
           <div className="hero-assurances"><span><Check size={16} /> Индивидуален подход</span><span><Check size={16} /> Онлайн записване</span></div>
         </div>
-        <div className="smile-art" aria-label="Декоративна графика на усмивка в лилаво">
+        <div className="smile-art" aria-label="Декоративен символ на дентална грижа">
           <div className="art-topline"><span>Д-Р ДЖАНЕЛ АЯЗ</span><Sparkles size={22} /></div>
           <div className="smile-orbit orbit-one" /><div className="smile-orbit orbit-two" />
-          <div className="smile-sculpture" aria-hidden="true"><div className="smile-shine" /></div>
-          <div className="art-caption"><span>Всяка усмивка<br /><em>заслужава внимание.</em></span><span className="art-seal">ДЕНТАЛНА<br />ГРИЖА</span></div>
+          <ClinicMark className="hero-tooth" />
+          <div className="art-caption"><span>Всяка усмивка<br /><em>заслужава внимание.</em></span><span className="art-seal">ЛИЧНО<br />ОТНОШЕНИЕ</span></div>
           <Link href="/zapisi-chas" className="art-booking"><span className="art-calendar"><Calendar size={21} /></span><span><strong>Вашият следващ преглед</strong><small>Изберете удобен ден и час</small></span><ArrowUpRight size={22} /></Link>
         </div>
       </div>

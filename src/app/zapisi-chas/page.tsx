@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
+import ClinicMark from '@/components/ClinicMark';
+import styles from './booking.module.css';
 import { useSearchParams } from 'next/navigation';
 import { Service, Appointment, DayOff } from '@/types/database';
 import { getServices, getAvailableSlots, addAppointment, getDaysOff } from '@/lib/storage';
@@ -9,7 +11,6 @@ import { initialServices } from '@/lib/data/initialData';
 import { formatBulgarianDate } from '@/lib/notifications';
 import { 
   CheckCircle2, 
-  Calendar, 
   Clock, 
   User, 
   Phone, 
@@ -335,7 +336,16 @@ function BookingWizardContent() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto py-8 sm:py-12">
+    <div className={styles.layout}>
+      <aside className={styles.aside}>
+        <Link href="/" className={styles.brand}><ClinicMark />Д-р Джанел Аяз</Link>
+        <span className="eyebrow">ВАШЕТО ПОСЕЩЕНИЕ</span>
+        <h2>Първата стъпка<br />към по-здрава<br /><em>усмивка.</em></h2>
+        <p>Изберете удобен час. Ние ще отделим време за Вашите въпроси и за грижата, от която имате нужда.</p>
+        <ol><li><span>01</span><div><strong>Изберете услуга</strong><small>Или започнете с първичен преглед</small></div></li><li><span>02</span><div><strong>Намерете удобен час</strong><small>Вижте наличните дни в календара</small></div></li><li><span>03</span><div><strong>Оставете данни за връзка</strong><small>Прегледайте избора си и потвърдете</small></div></li></ol>
+        <a href="tel:+359888123456" className={styles.help}><Phone size={18} /><span>Нужда от съдействие?<strong>088 812 3456</strong></span></a>
+      </aside>
+      <div className={styles.formArea}>
       
       {/* Top Breadcrumb / Back button */}
       <div className="mb-6 flex items-center justify-between">
@@ -356,7 +366,7 @@ function BookingWizardContent() {
       </div>
 
       {/* Main Form Card */}
-      <div className="bg-white rounded-3xl border border-purple-100 p-5 sm:p-9 shadow-lg shadow-purple-900/5">
+      <div className={`${styles.card} bg-white rounded-3xl border border-purple-100 p-5 sm:p-9 shadow-lg shadow-purple-900/5`}>
         
         {/* Header */}
         <div className="mb-8 text-center space-y-1">
@@ -376,6 +386,7 @@ function BookingWizardContent() {
           <div className="grid grid-cols-3 gap-1 bg-purple-50 p-1 rounded-2xl mb-2">
             <button
               type="button"
+              aria-current={currentStep === 1 ? 'step' : undefined}
               onClick={() => setCurrentStep(1)}
               className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition-all ${
                 currentStep === 1
@@ -390,6 +401,7 @@ function BookingWizardContent() {
 
             <button
               type="button"
+              aria-current={currentStep === 2 ? 'step' : undefined}
               disabled={!selectedService}
               onClick={() => selectedService && setCurrentStep(2)}
               className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition-all ${
@@ -405,6 +417,7 @@ function BookingWizardContent() {
 
             <button
               type="button"
+              aria-current={currentStep === 3 ? 'step' : undefined}
               disabled={!selectedSlot}
               onClick={() => selectedSlot && setCurrentStep(3)}
               className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition-all ${
@@ -443,7 +456,7 @@ function BookingWizardContent() {
           <div>
             <div className="mb-4">
               <h2 className="text-base sm:text-lg font-bold text-slate-900">
-                1. Изберете процедура:
+                Изберете подходящата грижа
               </h2>
               <p className="text-xs text-slate-500">
                 Натиснете върху желаната манипулация, за да видите свободните часове.
@@ -456,10 +469,12 @@ function BookingWizardContent() {
                 .map((service) => {
                   const isSelected = selectedService?.id === service.id;
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={service.id}
+                      aria-label={`Изберете ${service.title}`}
                       onClick={() => handleSelectServiceAndNext(service)}
-                      className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                      className={`w-full text-left p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                         isSelected
                           ? 'border-purple-700 bg-purple-50/80 ring-1 ring-purple-700'
                           : 'border-slate-200 bg-white hover:border-purple-300'
@@ -469,8 +484,8 @@ function BookingWizardContent() {
                         <h3 className="text-sm sm:text-base font-bold text-slate-900">
                           {service.title}
                         </h3>
-                        <div className="flex items-center gap-2 text-xs text-slate-500 font-medium mt-1">
-                          <span className="flex items-center gap-1">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 font-medium mt-1">
+                          <span className="flex items-center gap-1 whitespace-nowrap">
                             <Clock className="w-3.5 h-3.5 text-purple-600" />
                             {service.duration_minutes} мин.
                           </span>
@@ -491,7 +506,7 @@ function BookingWizardContent() {
                           <ArrowRight className="w-3 h-3" />
                         </span>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
             </div>
@@ -500,7 +515,7 @@ function BookingWizardContent() {
               <div className="mt-6 pt-4 border-t border-purple-50 flex justify-end">
                 <button
                   type="button"
-                  onClick={() => setCurrentStep(2)}
+              onClick={() => setCurrentStep(2)}
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-purple-800 hover:bg-purple-900 text-white text-sm font-bold shadow-md shadow-purple-900/15 transition-all"
                 >
                   <span>Продължи към дата и час</span>
@@ -518,7 +533,7 @@ function BookingWizardContent() {
           <div>
             <div className="mb-5">
               <h2 className="text-base sm:text-lg font-bold text-slate-900">
-                2. Изберете ден и свободен час:
+                Кога Ви е удобно?
               </h2>
               <p className="text-xs text-slate-500">
                 Времетраене на процедурата: {selectedService?.duration_minutes} мин.
@@ -784,7 +799,7 @@ function BookingWizardContent() {
               <button
                 type="button"
                 disabled={!selectedSlot}
-                onClick={() => setCurrentStep(3)}
+              onClick={() => setCurrentStep(3)}
                 className="inline-flex items-center gap-1.5 px-6 py-2.5 sm:py-3 rounded-full bg-purple-800 hover:bg-purple-900 text-white text-xs sm:text-sm font-bold shadow-md shadow-purple-900/15 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <span>Продължи към данни</span>
@@ -801,10 +816,10 @@ function BookingWizardContent() {
           <form onSubmit={handleSubmit}>
             <div className="mb-5">
               <h2 className="text-base sm:text-lg font-bold text-slate-900">
-                3. Въведете вашите данни:
+                Как да се свържем с Вас?
               </h2>
               <p className="text-xs text-slate-500">
-                За да запишем часа и да изпратим напомняне.
+                Данните са необходими за връзка относно Вашето посещение.
               </p>
             </div>
 
@@ -865,7 +880,7 @@ function BookingWizardContent() {
                   />
                 </div>
                 <span className="text-[11px] text-slate-500 mt-1 block">
-                  Ще получите напомняне по Viber/SMS преди посещението.
+                  Използваме телефона за връзка относно Вашето посещение.
                 </span>
               </div>
 
@@ -934,13 +949,14 @@ function BookingWizardContent() {
         )}
 
       </div>
+      </div>
     </div>
   );
 }
 
 export default function BookingPage() {
   return (
-    <main className="min-h-screen bg-[#faf8fc] px-4">
+    <main className={styles.page}>
       <Suspense fallback={
         <div className="max-w-md mx-auto py-20 text-center text-purple-800">
           <div className="inline-block w-6 h-6 border-2 border-purple-800 border-t-transparent rounded-full animate-spin mb-2" />

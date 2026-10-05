@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import ClinicMark from '@/components/ClinicMark';
+import styles from './admin.module.css';
 import {
   Service,
   WorkingHour,
@@ -35,32 +37,23 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import {
   Calendar as CalendarIcon,
   Clock,
-  User,
   Phone,
-  Mail,
   FileText,
   CheckCircle2,
-  XCircle,
   PlusCircle,
   Bell,
   Trash2,
-  Edit,
   ExternalLink,
   LogOut,
   Lock,
   Building,
   CalendarOff,
-  Search,
   Check,
-  AlertTriangle,
   Euro,
   Users,
 
-  ChevronRight,
-  Info,
   RotateCw,
   X,
-  MessageSquare,
   ArrowUpRight,
 } from 'lucide-react';
 import AdminHourlyCalendar from '@/components/AdminHourlyCalendar';
@@ -391,7 +384,7 @@ export default function AdminPage() {
   const handleWorkingHourChange = async (
     dayOfWeek: DayOfWeek,
     field: keyof WorkingHour,
-    value: any
+    value: WorkingHour[keyof WorkingHour] | null
   ) => {
     setWorkingHours((prev) =>
       prev.map((wh) => (wh.day_of_week === dayOfWeek ? { ...wh, [field]: value } : wh))
@@ -483,19 +476,20 @@ export default function AdminPage() {
   // ==========================================
   if (!isAuthenticated) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <main className={styles.login}>
+        <div className={styles.loginStory}><span className="eyebrow">Д-Р ДЖАНЕЛ АЯЗ · ДЕНТАЛНА ПРАКТИКА</span><ClinicMark /><h2>Повече време<br />за Вашите<br /><em>пациенти.</em></h2><p>График, услуги и организация на кабинета на едно място.</p><Link href="/">← Към уебсайта</Link></div>
 
-        <div className="max-w-sm w-full bg-white rounded-2xl border border-gray-200 p-8 sm:p-10 text-center">
+        <div className={styles.loginCard}>
 
           <div className="w-12 h-12 rounded-xl bg-purple-800 text-white flex items-center justify-center mx-auto mb-5">
-            <ToothIcon className="w-6 h-6" />
+            <ClinicMark className="w-7 h-8" />
           </div>
 
           <h1 className="text-xl font-bold text-slate-900">
             Д-р Джанел Аяз
           </h1>
           <p className="text-sm text-slate-500 mt-1 mb-8">
-            Административен панел
+            Добре дошли в лекарския панел
           </p>
 
           <div className="space-y-3">
@@ -549,23 +543,23 @@ export default function AdminPage() {
   // ОСНОВЕН ИЗГЛЕД НА АДМИН ПАНЕЛА
   // ==========================================
   return (
-    <div className="min-h-screen bg-[#F8F9FC] text-slate-900 flex flex-col font-sans selection:bg-purple-200">
+    <div className={styles.dashboard}>
       
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-purple-950 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-purple-700/60 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200 text-sm font-medium">
+        <div role="status" className="fixed bottom-6 right-6 z-50 bg-purple-950 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-purple-700/60 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200 text-sm font-medium">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* Top Navbar */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
+      <header className={styles.header}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className={styles.headerRow}>
             
             {/* Brand */}
-            <div className="flex items-center gap-3">
+            <div className={`${styles.headerBrand} flex items-center gap-3`}>
               <div className="w-9 h-9 rounded-lg bg-purple-800 flex items-center justify-center text-white">
                 <ToothIcon className="w-4.5 h-4.5" />
               </div>
@@ -574,13 +568,13 @@ export default function AdminPage() {
                   {adminUser?.name || 'Д-р Джанел Аяз'}
                 </span>
                 <span className="block text-xs text-slate-500">
-                  Админ панел
+                  Лекарски панел
                 </span>
               </div>
             </div>
 
             {/* Quick Actions & Logout with Clear Visual Priority */}
-            <div className="flex items-center gap-2">
+            <div className={styles.headerActions}>
               {/* PRIMARY ACTION: + Запиши час */}
               <button
                 type="button"
@@ -606,6 +600,7 @@ export default function AdminPage() {
                   showToast(res.message);
                 }}
                 className="inline-flex items-center gap-1 p-2 sm:px-2.5 sm:py-2 rounded-xl text-xs font-semibold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 transition-colors cursor-pointer"
+                aria-label="Синхронизирай данните"
                 title="Синхронизирай с облачната база данни"
               >
                 <RotateCw className={`w-3.5 h-3.5 text-purple-700 ${isLoading ? 'animate-spin' : ''}`} />
@@ -628,6 +623,7 @@ export default function AdminPage() {
                 type="button"
                 onClick={handleLogout}
                 className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-rose-600 hover:bg-rose-50/70 transition-colors cursor-pointer"
+                aria-label="Изход от системата"
                 title="Изход от системата"
               >
                 <LogOut className="w-3.5 h-3.5" />
@@ -640,12 +636,14 @@ export default function AdminPage() {
       </header>
 
       {/* Main Content Area */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 w-full flex-1">
+      <div className={styles.content}>
+        <div className={styles.pageHeading}><div><span className="eyebrow">ОРГАНИЗАЦИЯ НА КАБИНЕТА</span><h1>{({ schedule: 'Вашият график', services: 'Услуги и ценоразпис', hours: 'Работно време', days_off: 'Почивни дни и отпуски', settings: 'Настройки на кабинета' })[activeTab]}</h1><p>{({ schedule: 'Преглед на посещенията и грижата за Вашите пациенти.', services: 'Поддържайте услугите, цените и продължителността на процедурите.', hours: 'Определете кога кабинетът приема пациенти.', days_off: 'Планирайте периодите, в които няма да приемате пациенти.', settings: 'Информация за практиката и настройките за записване.' })[activeTab]}</p></div><span className={styles.dateBadge}><CalendarIcon size={17} />{formatBulgarianDate(todayStr)}</span></div>
         
         {/* Navigation Tabs (Modern Ergonomic Segmented Control) */}
-        <div className="bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80 flex items-center gap-1 overflow-x-auto scrollbar-none mb-6">
+        <nav aria-label="Раздели на лекарския панел" className={styles.tabs}>
           <button
             type="button"
+            aria-current={activeTab === 'schedule' ? 'page' : undefined}
             onClick={() => setActiveTab('schedule')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
               activeTab === 'schedule'
@@ -664,6 +662,7 @@ export default function AdminPage() {
 
           <button
             type="button"
+            aria-current={activeTab === 'services' ? 'page' : undefined}
             onClick={() => setActiveTab('services')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
               activeTab === 'services'
@@ -682,6 +681,7 @@ export default function AdminPage() {
 
           <button
             type="button"
+            aria-current={activeTab === 'hours' ? 'page' : undefined}
             onClick={() => setActiveTab('hours')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
               activeTab === 'hours'
@@ -695,6 +695,7 @@ export default function AdminPage() {
 
           <button
             type="button"
+            aria-current={activeTab === 'days_off' ? 'page' : undefined}
             onClick={() => setActiveTab('days_off')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
               activeTab === 'days_off'
@@ -715,6 +716,7 @@ export default function AdminPage() {
 
           <button
             type="button"
+            aria-current={activeTab === 'settings' ? 'page' : undefined}
             onClick={() => setActiveTab('settings')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
               activeTab === 'settings'
@@ -725,7 +727,7 @@ export default function AdminPage() {
             <Building className={`w-4 h-4 ${activeTab === 'settings' ? 'text-purple-200' : 'text-slate-500'}`} />
             <span>Настройки на кабинета</span>
           </button>
-        </div>
+        </nav>
 
         {/* ========================================================= */}
         {/* ТАБ 1: ГРАФИК И ЧАСОВЕ (SCHEDULE) */}
@@ -734,7 +736,7 @@ export default function AdminPage() {
           <div className="space-y-5">
             {/* Контекстна лента за бърз преглед */}
             <div className="bg-white rounded-2xl border border-slate-200/80 p-1.5 sm:p-2 shadow-xs">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 sm:gap-2">
+              <div className={styles.metrics}>
                 
                 {/* 1: Днес */}
                 <button
@@ -2068,20 +2070,6 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Floating Action Button for Mobile: 1-Tap Booking */}
-      <button
-        type="button"
-        onClick={() => {
-          setManualDate(selectedDateFilter || todayStr);
-          setManualTime('10:00');
-          setIsManualBookingOpen(true);
-        }}
-        className="sm:hidden fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-linear-to-br from-purple-700 to-indigo-800 text-white shadow-2xl flex items-center justify-center active:scale-95 transition-transform border border-white/30 cursor-pointer"
-        aria-label="Запиши нов час"
-        title="Запиши нов час за пациент"
-      >
-        <PlusCircle className="w-7 h-7" />
-      </button>
 
     </div>
   );
