@@ -64,21 +64,14 @@ ${payload.doctor_name}
 
 Очакваме Ви с усмивка!
 `,
-    smsText: `Напомняне: Вашият час при ${payload.doctor_name} е утре (${formattedDate}) от ${payload.time} ч. Кабинет: ${payload.clinic_address}.`,
+    smsText: `Напомняне: Вашият час при ${payload.doctor_name} е на ${formattedDate} от ${payload.time} ч. Кабинет: ${payload.clinic_address}.`,
   };
 }
 
-export async function sendNotification(payload: NotificationPayload): Promise<{ success: boolean; message: string }> {
-  // Симулация и логване на изпращането (или свързване с Resend API / SMS API)
-  const messageData = generateNotificationMessage(payload);
-  console.log('Sending Notification:', {
-    payload,
-    messageData,
-  });
-
-  // В реална среда тук се извиква Resend или SMS доставчик
+export async function sendNotification(_payload: NotificationPayload): Promise<{ success: boolean; message: string }> {
+  void _payload;
   return {
-    success: true,
-    message: `Изпратено успешно до ${payload.to_name} (${payload.to_email || payload.to_phone})`,
+    success: false,
+    message: 'Автоматичното изпращане не е конфигурирано. Изпратете съобщението ръчно чрез SMS/Viber.',
   };
 }

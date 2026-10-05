@@ -1,5 +1,7 @@
 'use client';
 
+import PremiumSelect from '@/components/PremiumSelect';
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import ClinicMark from '@/components/ClinicMark';
@@ -219,9 +221,11 @@ export default function AdminPage() {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     manualDialogRef.current?.querySelector<HTMLInputElement>('input')?.focus();
     const trapFocus = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (event.key === 'Escape' && event.target instanceof Element && event.target.closest('[role="combobox"][aria-expanded="true"]')) return;
       if (event.key === 'Escape') setIsManualBookingOpen(false);
       if (event.key !== 'Tab') return;
-      const controls = manualDialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled)');
+      const controls = manualDialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled):not([tabindex="-1"]), textarea:not(:disabled)');
       if (!controls?.length) return;
       const first = controls[0], last = controls[controls.length - 1];
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
@@ -567,7 +571,7 @@ export default function AdminPage() {
   // ==========================================
   return (
     <div className={styles.dashboard}>
-      
+
       {/* Toast Notification */}
       {toastMessage && (
         <div role="status" className="fixed bottom-6 right-6 z-50 bg-purple-950 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-purple-700/60 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200 text-sm font-medium">
@@ -580,7 +584,7 @@ export default function AdminPage() {
       <header className={styles.header}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className={styles.headerRow}>
-            
+
             {/* Brand */}
             <div className={`${styles.headerBrand} flex items-center gap-3`}>
               <div className="w-9 h-9 rounded-lg bg-purple-800 flex items-center justify-center text-white">
@@ -661,7 +665,7 @@ export default function AdminPage() {
       {/* Main Content Area */}
       <div className={styles.content}>
         <div className={styles.pageHeading}><div><span className="eyebrow">ОРГАНИЗАЦИЯ НА КАБИНЕТА</span><h1>{({ schedule: 'Вашият график', services: 'Услуги и ценоразпис', hours: 'Работно време', days_off: 'Почивни дни и отпуски', settings: 'Настройки на кабинета' })[activeTab]}</h1><p>{({ schedule: 'Преглед на посещенията и грижата за Вашите пациенти.', services: 'Поддържайте услугите, цените и продължителността на процедурите.', hours: 'Определете кога кабинетът приема пациенти.', days_off: 'Планирайте периодите, в които няма да приемате пациенти.', settings: 'Информация за практиката и настройките за записване.' })[activeTab]}</p></div><span className={styles.dateBadge}><CalendarIcon size={17} />{formatBulgarianDate(todayStr)}</span></div>
-        
+
         {/* Navigation Tabs (Modern Ergonomic Segmented Control) */}
         <nav aria-label="Раздели на лекарския панел" className={styles.tabs}>
           <button
@@ -760,7 +764,7 @@ export default function AdminPage() {
             {/* Контекстна лента за бърз преглед */}
             <div className="bg-white rounded-2xl border border-slate-200/80 p-1.5 sm:p-2 shadow-xs">
               <div className={styles.metrics}>
-                
+
                 {/* 1: Днес */}
                 <button
                   type="button"
@@ -1318,7 +1322,7 @@ export default function AdminPage() {
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm bg-white font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                 />
                 <span className="text-[11px] text-slate-400 mt-1 block">
-                  Препоръчително: 24 часа преди часа за преглед.
+                  Автоматично изпращане не е свързано. Тази стойност се запазва само като настройка за бъдеща интеграция; напомнянията засега се изпращат ръчно чрез SMS/Viber.
                 </span>
               </div>
 
@@ -1408,17 +1412,17 @@ export default function AdminPage() {
                 <label htmlFor="manual-field-4" className="block text-xs font-bold text-slate-700 mb-1">
                   Изберете процедура *
                 </label>
-                <select id="manual-field-4"
+                <PremiumSelect id="manual-field-4"
                   value={manualServiceId}
-                  onChange={(e) => setManualServiceId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
+                  onValueChange={setManualServiceId}
+
                 >
                   {services.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.title} (~{s.duration_minutes} мин. - {s.price_bgn} €)
                     </option>
                   ))}
-                </select>
+                </PremiumSelect>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1439,10 +1443,10 @@ export default function AdminPage() {
                   <label htmlFor="manual-field-6" className="block text-xs font-bold text-slate-700 mb-1">
                     Начален час *
                   </label>
-                  <select id="manual-field-6" required aria-label="Свободен начален час" value={manualAvailability.slots.includes(manualTime) ? manualTime : ''} onChange={event => setManualTime(event.target.value)} className="w-full px-3.5 py-2.5 border border-slate-300 text-sm bg-white">
+                  <PremiumSelect id="manual-field-6" required aria-label="Свободен начален час" value={manualAvailability.slots.includes(manualTime) ? manualTime : ''} onValueChange={setManualTime}>
                     <option value="">Изберете свободен час</option>
                     {manualAvailability.slots.map(slot => <option key={slot} value={slot}>{slot}</option>)}
-                  </select>
+                  </PremiumSelect>
                   {manualAvailability.slots.length === 0 && <p role="status" className="text-xs text-slate-500 mt-2">{manualAvailability.reason}</p>}
 
                 </div>
@@ -1660,18 +1664,18 @@ export default function AdminPage() {
 
             {/* Body */}
             <div className="overflow-y-auto p-4 sm:p-5 space-y-3.5 flex-1">
-              
+
               {/* СЕКЦИЯ 1: ДНЕС */}
               {activeKpiModal === 'today' && (
                 <>
                   {kpiTodayList.length === 0 ? (
                     <div className="text-center py-10 px-4 bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">
                       <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center mx-auto mb-2 text-xl">
-                        ☀️
+                        <CalendarIcon size={22} aria-hidden="true" />
                       </div>
-                      <h4 className="font-bold text-slate-800 text-sm">Няма записани часове за днес ☀️</h4>
+                      <h4 className="font-bold text-slate-800 text-sm">Няма записани часове за днес</h4>
                       <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
-                        Графикът за днес ({formatBulgarianDate(todayStr)}) е напълно свободен ☕. Можете да добавите час ръчно по всяко време.
+                        Графикът за днес ({formatBulgarianDate(todayStr)}) е напълно свободен. Можете да добавите час ръчно по всяко време.
                       </p>
                       <button
                         type="button"
@@ -1805,11 +1809,11 @@ export default function AdminPage() {
                   {kpiUpcomingList.length === 0 ? (
                     <div className="text-center py-10 px-4 bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">
                       <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center mx-auto mb-2 text-xl">
-                        ☕
+
                       </div>
-                      <h4 className="font-bold text-slate-800 text-sm">Няма предстоящи часове — графикът е спокоен ☕</h4>
+                      <h4 className="font-bold text-slate-800 text-sm">Няма предстоящи часове — графикът е спокоен</h4>
                       <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
-                        В момента няма бъдещи потвърдени часове. Нови онлайн резервации ще се появят тук веднага след записване 🌤️.
+                        В момента няма бъдещи потвърдени часове. Нови онлайн резервации ще се появят тук веднага след записване.
                       </p>
                     </div>
                   ) : (
@@ -1913,9 +1917,9 @@ export default function AdminPage() {
                   {kpiCompletedList.length === 0 ? (
                     <div className="text-center py-10 px-4 bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">
                       <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-2 text-xl">
-                        🌤️
+                        <CheckCircle2 size={22} aria-hidden="true" />
                       </div>
-                      <h4 className="font-bold text-slate-800 text-sm">Все още няма приключили прегледи днес 🌤️</h4>
+                      <h4 className="font-bold text-slate-800 text-sm">Все още няма приключили прегледи днес</h4>
                       <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
                         След като извършите процедура за даден пациент, натиснете зеления бутон „Приключи ✓“ на съответния час.
                       </p>

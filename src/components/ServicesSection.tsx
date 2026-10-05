@@ -1,5 +1,7 @@
 'use client';
 
+import PremiumSelect from '@/components/PremiumSelect';
+
 import { useState } from 'react';
 import Link from 'next/link';
 import { Service } from '@/types/database';
@@ -19,7 +21,7 @@ export default function ServicesSection({ services }: { services: Service[] }) {
         <div className={styles.heading}><span className="eyebrow">ГРИЖА ЗА ВАШАТА УСМИВКА</span><h2>Услуги и прозрачни цени</h2><p>Изберете подходящата грижа. Планът и крайната цена се уточняват при прегледа.</p></div>
         <div className={styles.toolbar}>
           <div className={styles.filters}>{categories.map(item => <button type="button" key={item} aria-pressed={category === item} onClick={() => setCategory(item)}>{item}</button>)}</div>
-          <label className={styles.categorySelect}><span className="sr-only">Категория услуги</span><select value={category} onChange={e => setCategory(e.target.value)}>{categories.map(item => <option key={item}>{item}</option>)}</select><ChevronDown size={15} /></label>
+          <label className={styles.categorySelect}><span className="sr-only">Категория услуги</span><PremiumSelect aria-label="Категория услуги" value={category} onValueChange={setCategory}>{categories.map(item => <option key={item}>{item}</option>)}</PremiumSelect></label>
           <div className={styles.viewPicker} role="group" aria-label="Изглед на услугите"><button type="button" aria-label="Мрежа с услуги" aria-pressed={view === 'grid'} onClick={() => setView('grid')}><LayoutGrid size={17} /></button><button type="button" aria-label="Списък с услуги" aria-pressed={view === 'list'} onClick={() => setView('list')}><List size={18} /></button></div>
         </div>
         <div className={`${styles.services} ${view === 'list' ? styles.list : styles.grid}`}>

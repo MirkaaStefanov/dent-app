@@ -1,5 +1,7 @@
 'use client';
 
+import PremiumSelect from '@/components/PremiumSelect';
+
 import React, { useState } from 'react';
 import styles from './AdminHourlyCalendar.module.css';
 import { calculateAvailableSlots } from '@/lib/availability';
@@ -327,10 +329,10 @@ export default function AdminHourlyCalendar({
       {/* 1. TOP TOOLBAR: VIEW TOGGLE, NAVIGATION & SEARCH */}
       {/* ───────────────────────────────────────────────────────── */}
       <div className="bg-linear-to-r from-purple-50/80 via-white to-purple-50/70 rounded-3xl border border-purple-100 p-3.5 sm:p-5 shadow-sm space-y-3.5">
-        
+
         {/* Row 1: Active Title & Stepper + View Switcher */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          
+
           {/* Stepper & Date Title */}
           <div className="flex items-center justify-between sm:justify-start gap-2">
             <div className="inline-flex items-center gap-0.5 bg-purple-100/90 p-1 rounded-2xl border border-purple-200 shadow-2xs">
@@ -452,17 +454,17 @@ export default function AdminHourlyCalendar({
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <select
+            <PremiumSelect
               aria-label="Статус на посещенията"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full sm:w-auto px-3 py-2 rounded-xl border border-purple-200 text-xs font-bold text-purple-950 bg-white/90 hover:bg-white hover:border-purple-300 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600 transition-all cursor-pointer"
+              onValueChange={setStatusFilter}
+
             >
               <option value="all">Всички статуси</option>
               <option value="confirmed">Само потвърдени</option>
               <option value="completed">Само приключили</option>
               <option value="cancelled">Само отменени</option>
-            </select>
+            </PremiumSelect>
 
             {isFiltering && (
               <button
@@ -482,7 +484,7 @@ export default function AdminHourlyCalendar({
         {/* Row 3: Visual Color Legend (Легенда за цветовете) */}
         {viewMode !== 'day' && <div className="flex items-center gap-2.5 sm:gap-4 flex-wrap text-[10px] sm:text-[11px] font-semibold text-purple-900 pt-2 border-t border-purple-100">
           <span className="text-purple-400 font-bold hidden sm:inline">Легенда:</span>
-          
+
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-md bg-emerald-500 shadow-xs" />
             <span className="text-emerald-950 font-bold">Потвърден / Приключил</span>
@@ -527,10 +529,10 @@ export default function AdminHourlyCalendar({
       {/* ═══════════════════════════════════════════════════════════ */}
       {viewMode === 'month' && (
         <div className="space-y-4">
-          
+
           {/* Main Month Box */}
           <div className="bg-white rounded-3xl border border-purple-100 shadow-md shadow-purple-950/5 overflow-hidden p-2.5 sm:p-5">
-            
+
             {/* Weekdays Header */}
             <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2.5 text-center bg-linear-to-r from-purple-100/90 via-purple-100/80 to-purple-100/90 p-1.5 rounded-2xl border border-purple-200/90">
               {BG_WEEKDAYS_SHORT.map((day, idx) => {
@@ -546,7 +548,7 @@ export default function AdminHourlyCalendar({
                   >
                     <span className="sm:hidden">{day}</span>
                     <span className="hidden sm:inline">
-                      {day} {isWknd ? '☀️' : ''}
+                      {day}
                     </span>
                   </div>
                 );
@@ -624,7 +626,7 @@ export default function AdminHourlyCalendar({
                     {/* Dot or Palm indicator on mobile */}
                     <div className="flex items-center gap-0.5 mb-0.5 z-10 relative">
                       {dayOff && cell.isCurrentMonth ? (
-                        <span className="text-[9px] leading-none">🏖️</span>
+                        <span className="text-[9px] leading-none"><CalendarOff size={14} aria-hidden="true" /></span>
                       ) : hasApts ? (
                         <span
                           className={`w-2.5 h-2.5 rounded-full ${
@@ -728,7 +730,7 @@ export default function AdminHourlyCalendar({
                         )}
                         {dayOff && cell.isCurrentMonth && (
                           <span className="text-[9px] font-bold text-rose-800 bg-rose-100 px-1.5 py-0.5 rounded-md border border-rose-300 flex items-center gap-1 shadow-2xs">
-                            <span>🏖️</span>
+                            <span><CalendarOff size={14} aria-hidden="true" /></span>
                             <span>Отпуск</span>
                           </span>
                         )}
@@ -873,7 +875,7 @@ export default function AdminHourlyCalendar({
                 {activeDayOff && (
                   <div className="p-3.5 bg-rose-50/90 rounded-2xl border-2 border-rose-300 flex items-center gap-3 text-rose-950 shadow-2xs">
                     <div className="w-10 h-10 rounded-xl bg-rose-100 border border-rose-300 flex items-center justify-center text-rose-700 shrink-0 text-xl">
-                      🏖️
+                      <CalendarOff size={14} aria-hidden="true" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -893,7 +895,7 @@ export default function AdminHourlyCalendar({
 
                 {activeDayAppointments.length === 0 ? (
                   <div className="py-7 text-center text-xs text-slate-500 space-y-2.5 bg-white/70 rounded-2xl border border-dashed border-purple-200">
-                    <div className="text-2xl">{activeDayOff ? '🏖️' : '🌤️'}</div>
+                    <div className="text-2xl"><CalendarOff size={24} className="mx-auto text-purple-400" /></div>
                     <p className="font-bold text-purple-950 text-sm">
                       {activeDayOff ? `Неработен ден: ${activeDayOff.reason}` : 'Свободен ден — няма записани часове'}
                     </p>
@@ -930,7 +932,7 @@ export default function AdminHourlyCalendar({
       {/* ═══════════════════════════════════════════════════════════ */}
       {viewMode === 'week' && (
         <div className="space-y-3">
-          
+
           {/* Mobile Week Strip (Horizontal swiper for phones) */}
           <div className="flex gap-2 overflow-x-auto pb-1 sm:hidden scrollbar-none">
             {weekDays.map((day, idx) => {
@@ -973,7 +975,7 @@ export default function AdminHourlyCalendar({
                   </span>
                   <span className="text-base font-bold my-0.5">{day.dayNum}</span>
                   {dayOff ? (
-                    <span className="text-[10px]">🏖️</span>
+                    <span className="text-[10px]"><CalendarOff size={14} aria-hidden="true" /></span>
                   ) : count > 0 ? (
                     <span className={`text-[9px] font-bold px-1.5 rounded-full ${isSelected ? 'bg-white text-purple-900' : 'bg-purple-700 text-white'}`}>
                       {count}
@@ -1041,7 +1043,7 @@ export default function AdminHourlyCalendar({
                         </span>
                         {dayOff ? (
                           <span className="text-[8px] font-bold text-rose-800 bg-rose-100 px-1 py-0.2 rounded-sm border border-rose-200 flex items-center gap-0.5">
-                            🏖️ Отпуск
+                            <CalendarOff size={14} aria-hidden="true" /> Отпуск
                           </span>
                         ) : isWeekend ? (
                           <span className="text-[8px] font-bold text-amber-800 bg-amber-100 px-1 py-0.2 rounded-sm border border-amber-200">
@@ -1178,7 +1180,7 @@ export default function AdminHourlyCalendar({
       {/* ═══════════════════════════════════════════════════════════ */}
       {viewMode === 'day' && (
         <div className="space-y-4">
-          
+
           <div className={styles.daySummary}>
             <div className={styles.daySummaryRow}><span>{activeDayAppointments.length} посещения {isFiltering ? 'по избраните филтри' : 'за деня'}</span><button type="button" onClick={() => setShowFullTimeline(!showFullTimeline)}>{showFullTimeline ? 'Скрий хронологията' : 'Покажи хронологията'}</button></div>
             {/* Day Off Banner in Day View */}
@@ -1188,7 +1190,7 @@ export default function AdminHourlyCalendar({
               return (
                 <div className="p-3.5 bg-rose-50 rounded-2xl border-2 border-rose-300 flex items-center gap-3 text-rose-950 shadow-2xs">
                   <div className="w-10 h-10 rounded-xl bg-rose-100 border border-rose-300 flex items-center justify-center text-rose-700 shrink-0 text-xl">
-                    🏖️
+                    <CalendarOff size={14} aria-hidden="true" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <span className="text-[9px] font-bold uppercase text-rose-700 tracking-wider bg-rose-100 px-1.5 py-0.5 rounded-md border border-rose-200">
@@ -1212,7 +1214,7 @@ export default function AdminHourlyCalendar({
 
           <section className={styles.availability}>
             <div className={styles.slotHeading}><div><span className="eyebrow">НОВО ПОСЕЩЕНИЕ</span><h3>Свободни часове</h3><p>За процедура с продължителност {bookingDuration} мин. · Съобразени с работното време и почивките.</p></div><span className={styles.slotCount}>{availability.slots.length} налични</span></div>
-            <label className={styles.serviceSelector}><span>Процедура за новия час</span><select value={bookingServiceId} onChange={event => onBookingServiceChange(event.target.value)}>{services.filter(service => service.is_active).map(service => <option key={service.id} value={service.id}>{service.title} · {service.duration_minutes} мин.</option>)}</select></label>
+            <label className={styles.serviceSelector}><span>Процедура за новия час</span><PremiumSelect aria-label="Процедура за новия час" value={bookingServiceId} onValueChange={onBookingServiceChange}>{services.filter(service => service.is_active).map(service => <option key={service.id} value={service.id}>{service.title} · {service.duration_minutes} мин.</option>)}</PremiumSelect></label>
             {availability.slots.length === 0 ? <p className={styles.noSlots}>{availability.reason}</p> : <div className={styles.slotGroups}>{['Сутрин', 'Следобед'].map((period, index) => {
               const slots = availability.slots.filter(slot => index === 0 ? slot < '13:00' : slot >= '13:00');
               return slots.length > 0 && <div key={period}><h4>{period}</h4><div className={styles.slotGrid}>{slots.map(slot => <button type="button" key={slot} onClick={() => onNewAppointmentAt(activeDate, slot)} aria-label={`Запиши час в ${slot}`}>{slot}<Plus size={12} /></button>)}</div></div>;
@@ -1284,7 +1286,7 @@ export default function AdminHourlyCalendar({
       {detailAppointment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl border border-purple-100 shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-4 sm:p-7 space-y-4 animate-in zoom-in-95 duration-150">
-            
+
             {/* Modal Header */}
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -1582,7 +1584,7 @@ export default function AdminHourlyCalendar({
         }`}
       >
         <div className="flex flex-col gap-3">
-          
+
           {/* Top Row: Patient Avatar, Name & Status & Price */}
           <div className="flex items-start justify-between gap-2.5 flex-wrap">
             <div className="flex items-center gap-3 min-w-0">

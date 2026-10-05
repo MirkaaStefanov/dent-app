@@ -231,7 +231,7 @@ export default function InteractiveCalendar({
               }`}
             >
               <span>{day}</span>
-              {isWeekendHeader && <span className="hidden sm:inline text-[10px] ml-0.5">☀️</span>}
+
             </div>
           );
         })}
@@ -329,15 +329,10 @@ export default function InteractiveCalendar({
                   {item.dayNum}
                 </span>
 
-                {/* Weekend Badge Icon */}
-                {isWeekend && !dayOff && !isSelected && !isPast && (
-                  <span className="text-[9px] text-amber-700 font-extrabold">☀️</span>
-                )}
-
-                {/* Day Off Palm Icon */}
+                {/* Day off indicator */}
                 {dayOff && !isSelected && (
                   <span className="text-[10px] leading-none" title={dayOff.reason}>
-                    🏖️
+                    <CalendarIcon size={16} aria-hidden="true" />
                   </span>
                 )}
               </div>
@@ -421,7 +416,7 @@ export default function InteractiveCalendar({
             if (selectedDayOff) {
               return (
                 <div className="bg-rose-50 border-2 border-rose-300 rounded-2xl p-2.5 sm:p-3 text-rose-950 flex items-center gap-2.5 shadow-2xs">
-                  <span className="text-xl shrink-0">🏖️</span>
+                  <span className="text-xl shrink-0"><CalendarIcon size={16} aria-hidden="true" /></span>
                   <div className="text-xs min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-black text-rose-900 uppercase tracking-wide text-[10px] bg-rose-200 px-1.5 py-0.2 rounded-md">
@@ -446,7 +441,7 @@ export default function InteractiveCalendar({
             if (isSelWeekend) {
               return (
                 <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-2.5 sm:p-3 text-amber-950 flex items-center gap-2.5 shadow-2xs">
-                  <span className="text-xl shrink-0">☀️</span>
+                  <span className="text-xl shrink-0"><CalendarIcon size={20} aria-hidden="true" /></span>
                   <div className="text-xs min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-black text-amber-900 uppercase tracking-wide text-[10px] bg-amber-200 px-1.5 py-0.2 rounded-md">
