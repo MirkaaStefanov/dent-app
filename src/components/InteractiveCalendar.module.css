@@ -14,3 +14,14 @@
 .days button:disabled { color: #d1c8d6; cursor: default; background: none; border-color: transparent; }
 .selection { font-size: 10px; color: #aa99b1; margin-top: 20px; }
 .selection strong { font-weight: 400; color: #765482; }
+
+.days button { background: #f1e5f8; border-color: #d5b9e5; color: #613478; font-weight: 500; border-radius: 6px; }
+.days button:disabled { color: #9a989e; background: #f3f3f4; border-color: #e7e5e9; text-decoration: line-through; }
+.days button[aria-pressed="true"]:not(:disabled) { background: #633a78; color: #fff; border-color: #633a78; }
+.days button:focus-visible { outline: 2px solid #633a78; outline-offset: 2px; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-top: 18px; font-size: 11px; color: #695870; }
+.legend span { display: flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 12px; border-radius: 3px; border: 1px solid; }
+.workingDot { background: #f1e5f8; border-color: #d5b9e5 !important; }
+.closedDot { background: #f3f3f4; border-color: #d2cfd6 !important; }
+.selectedDot { background: #633a78; border-color: #633a78 !important; }

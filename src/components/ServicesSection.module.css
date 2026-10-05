@@ -41,3 +41,17 @@
 @media (max-width: 767px) { .section { padding: 55px 0; } .heading { margin-bottom: 22px; } .heading h2 { font-size: 32px; } .heading p { font-size: 12px; } .filters { display: none; } .categorySelect { display: flex; align-items: center; position: relative; flex: 1; min-width: 0; } .categorySelect select { appearance: none; border: 1px solid #e5dce9; border-radius: 6px; padding: 12px 30px 12px 12px; font-size: 12px !important; width: 100%; background: white; color: #6d517b; min-height: 46px; } .categorySelect svg { position: absolute; right: 12px; pointer-events: none; } .toolbar { gap: 10px; } .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .service { padding: 16px 12px; gap: 15px 6px; } .category { font-size: 9px; margin-bottom: 8px; } .serviceInfo { padding-right: 0; } .service h3 { font-size: 12px; min-height: 54px; line-height: 1.5; overflow-wrap: anywhere; } .duration { font-size: 10px; } .price > span { font-size: 22px; } .price > small { font-size: 8px; } .book { font-size: 10px; gap: 3px; justify-content: flex-end; align-self: end; } .number { display: none; } .details summary { font-size: 9px; } .list .service { grid-template-columns: minmax(0, 1fr) 80px; gap: 5px 15px; padding: 18px 0; } .list .price { text-align: right; } .list .book { grid-column: 2; grid-row: 2; } .list .details { grid-column: 1; grid-row: 2; } }
 @media (max-width: 359px) { .grid .service { grid-template-columns: 1fr; } .grid .book { justify-content: start; } .grid .details { grid-row: auto; } }
 @media (max-width: 767px) { .grid .price > small { display: none; } .grid .book { white-space: nowrap; } .viewPicker button { min-height: 44px; } .details summary { min-height: 40px; } .categorySelect select { font-size: 16px !important; } }
+
+/* Lavender surfaces keep the service catalogue visually connected to the brand. */
+.section { background: linear-gradient(180deg, #fbf8fd, #f5eef9); }
+.filters { gap: 8px; }
+.filters button { min-height: 44px; padding: 10px 17px; border: 1px solid #d8c4e4; background: #fff; color: #674079; border-radius: 999px; transition: background .18s, border-color .18s; }
+.filters button:hover { background: #eee2f5; border-color: #a87cbd; }
+.filters button[aria-pressed="true"] { background: #633a78; border-color: #633a78; color: #fff; box-shadow: 0 3px 10px #633a7820; }
+.service { background: #fff; border-color: #d9c5e4; border-top: 3px solid #a780bd; box-shadow: 0 5px 20px #633a7806; }
+.category { color: #74448d; font-weight: 600; }
+.price > span { color: #633a78; }
+.book { color: #633a78; font-weight: 600; }
+.viewPicker { background: #fff; border-color: #d8c4e4; }
+.categorySelect button { border-color: #cbb0dc; background: #fff; color: #633a78; }
+.list .service { background: #fff; border-left: 3px solid #a780bd; border-bottom-color: #dfd0e8; padding-left: 18px; }

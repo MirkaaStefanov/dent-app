@@ -59,3 +59,8 @@
 .selectedService > div:last-child { flex-shrink: 0; text-align: right; }
 .selectedService > div:last-child > span { font-size: 17px; color: #684078; }
 .selectedService button { display: block; font-size: 10px; color: #9c85a7; font-weight: 400; text-decoration: underline; }
+
+.quickDates button:not(:disabled) { background: #f1e5f8; border-color: #d5b9e5; color: #613478; }
+.quickDates button:disabled { background: #f3f3f4; border-color: #e7e5e9; color: #9a989e; opacity: 1; }
+.quickDates button:disabled strong { text-decoration: line-through; }
+.quickDates button[aria-pressed="true"]:not(:disabled) { background: #633a78; border-color: #633a78; color: #fff; }

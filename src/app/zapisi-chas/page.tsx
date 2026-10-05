@@ -62,12 +62,12 @@ function BookingWizardContent() {
   const searchParams = useSearchParams();
   const preselectedServiceId = searchParams.get('service');
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Sofia', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
   const [services, setServices] = useState<Service[]>(initialServices);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [currentStep, setCurrentStep] = useState<StepNumber>(1);
-  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
+  const [selectedDate, setSelectedDate] = useState<string>('');
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [unavailableReason, setUnavailableReason] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -97,6 +97,7 @@ function BookingWizardContent() {
           getWorkingHours(),
         ]);
         setWorkingHours(fetchedWorkingHours);
+        setSelectedDate(date => date || todayStr);
         if (fetchedDaysOff) {
           setDaysOff(fetchedDaysOff);
         }
@@ -117,7 +118,7 @@ function BookingWizardContent() {
       }
     }
     load();
-  }, [preselectedServiceId]);
+  }, [preselectedServiceId, todayStr]);
 
   // Load slots when date or service changes
   useEffect(() => {

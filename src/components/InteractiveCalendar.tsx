@@ -147,6 +147,7 @@ export default function InteractiveCalendar({
         const disabled = checkDisabled(item.dateStr, index % 7) || Boolean(getDayOffForDate(item.dateStr, daysOff));
         return <button type="button" key={item.dateStr} disabled={disabled} data-outside={!inMonth || undefined} aria-pressed={selectedDate === item.dateStr} aria-current={item.dateStr === todayStr ? 'date' : undefined} aria-label={formatBulgarianDate(item.dateStr)} onClick={() => onSelectDate(item.dateStr)}>{item.dayNum}</button>;
       })}</div>
+      <div className={styles.legend} aria-label="Легенда на календара"><span><i className={styles.workingDot} />Работен ден</span><span><i className={styles.closedDot} />Неработен / минал ден</span><span><i className={styles.selectedDot} />Избрана дата</span></div>
       <p className={styles.selection}>Избрана дата: <strong>{formatBulgarianDate(selectedDate)}</strong></p>
     </div>;
   }
