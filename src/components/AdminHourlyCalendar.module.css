@@ -1,0 +1,36 @@
+.calendar { display: grid; gap: 22px; }
+.calendar > div:first-child { background: white; border: 1px solid #e5dce9; border-radius: 8px; box-shadow: none; }
+.calendar :global(.rounded-3xl) { border-radius: 8px; }
+.calendar :global(.rounded-2xl) { border-radius: 6px; }
+.calendar button[aria-pressed="true"] { background: #563367; color: #fff; }
+.availability { padding: 28px; background: white; border: 1px solid #e6dfe9; border-radius: 8px; }
+.slotHeading { display: flex; align-items: start; justify-content: space-between; gap: 20px; padding-bottom: 22px; border-bottom: 1px solid #eee7f2; }
+.slotHeading h3 { font: 26px var(--font-serif); margin: 10px 0; }
+.slotHeading p { font-size: 11px; color: #95869c; line-height: 1.8; max-width: 400px; }
+.slotCount { font-size: 10px; color: #8b6b9a; white-space: nowrap; padding-top: 5px; }
+.slotGroups { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; padding-top: 25px; }
+.slotGroups h4 { font-size: 11px; color: #86728f; font-weight: 500; margin-bottom: 12px; }
+.slotGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
+.slotGrid button { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; border: 1px solid #e9e1ee; border-radius: 3px; font-size: 12px; font-variant-numeric: tabular-nums; color: #6f507c; cursor: pointer; }
+.slotGrid svg { color: #b299bf; }
+.slotGrid button:hover { color: white; background: #633a78; border-color: #633a78; }
+.noSlots { font-size: 13px; color: #8f7e98; padding: 24px 0 6px; }
+.appointmentCard { border-radius: 6px; box-shadow: none; }
+@media (max-width: 767px) { .availability { padding: 20px 16px; } .slotGroups { grid-template-columns: 1fr; gap: 24px; } .slotGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); } .slotHeading h3 { font-size: 23px; } .calendar { gap: 16px; } }
+.serviceSelector { display: block; margin-top: 22px; }
+.serviceSelector > span { display: block; font-size: 10px; font-weight: 400; color: #9c88a6; margin-bottom: 8px; }
+.serviceSelector select { width: 100%; padding: 12px; border: 1px solid #e4d8eb; border-radius: 4px; font-size: 12px; color: #6b4c78; }
+.calendar :global(.font-black), .calendar :global(.font-extrabold) { font-weight: 500; }
+.calendar :global(.bg-linear-to-br), .calendar :global(.bg-linear-to-r) { background-image: none; }
+.patientCard { padding: 24px; border-radius: 6px; border-left-width: 2px; box-shadow: none; }
+.patientCard :global(.bg-purple-100) { background: #f6f1f8; border-color: #e6dcea; }
+.patientCard :global(.shadow-xs), .patientCard :global(.shadow-2xs) { box-shadow: none; }
+.patientCard button, .patientCard a { min-height: 36px; }
+@media (max-width: 767px) { .patientCard { padding: 18px 14px; } }
+.daySummary { border: 0; background: transparent; }
+.daySummaryRow { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
+.daySummaryRow > span { font-size: 12px; color: #93839b; }
+.daySummaryRow button { font-size: 11px; color: #8c6c9c; min-height: 40px; cursor: pointer; }
+.emptyDay { display: flex; align-items: center; gap: 16px; padding: 24px; border: 1px solid #e6dfe9; border-radius: 6px; background: white; color: #ab92b7; }
+.emptyDay strong { display: block; font-size: 13px; font-weight: 400; color: #785884; }
+.emptyDay p { font-size: 11px; color: #a18daa; margin-top: 7px; line-height: 1.7; }

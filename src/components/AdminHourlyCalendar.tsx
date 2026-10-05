@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Appointment, AppointmentStatus, DayOff } from '@/types/database';
+import styles from './AdminHourlyCalendar.module.css';
+import { calculateAvailableSlots } from '@/lib/availability';
+import { Appointment, AppointmentStatus, DayOff, WorkingHour, Service } from '@/types/database';
 import { formatBulgarianDate } from '@/lib/notifications';
 import {
   Clock,
@@ -9,31 +11,28 @@ import {
   ChevronRight,
   Plus,
   Phone,
-  CheckCircle2,
-  XCircle,
   MessageSquare,
   Trash2,
-  Calendar as CalendarIcon,
   CalendarDays,
   CalendarRange,
   CalendarOff,
   Search,
   Check,
   User,
-  Coffee,
   RotateCcw,
-  Sun,
-  Sunset,
   X,
-  Info,
-  CheckCheck,
 } from 'lucide-react';
 
 interface AdminHourlyCalendarProps {
   selectedDate: string; // 'YYYY-MM-DD'
   onSelectDate: (dateStr: string) => void;
   appointments: Appointment[];
-  appointmentsByDate: Record<string, number>;
+  workingHours: WorkingHour[];
+  slotInterval?: number;
+  bookingDuration?: number;
+  services: Service[];
+  bookingServiceId: string;
+  onBookingServiceChange: (id: string) => void;
   onStatusChange: (aptId: string, newStatus: AppointmentStatus) => void;
   onSendReminder: (apt: Appointment) => void;
   onDeleteAppointment: (aptId: string, patientName: string) => void;
@@ -55,14 +54,6 @@ const BG_WEEKDAYS_FULL = [
   'Четвъртък',
   'Петък',
   'Събота',
-];
-
-const WORKING_HOURLY_SLOTS = [
-  '09:00', '09:30', '10:00', '10:30',
-  '11:00', '11:30', '12:00', '12:30',
-  '13:00', '13:30', '14:00', '14:30',
-  '15:00', '15:30', '16:00', '16:30',
-  '17:00', '17:30', '18:00',
 ];
 
 function parseLocalDate(dateStr: string): Date {
@@ -130,7 +121,10 @@ export default function AdminHourlyCalendar({
   selectedDate,
   onSelectDate,
   appointments,
-  appointmentsByDate,
+  workingHours,
+  slotInterval = 15,
+  bookingDuration = 30,
+  services, bookingServiceId, onBookingServiceChange,
   onStatusChange,
   onSendReminder,
   onDeleteAppointment,
@@ -142,7 +136,7 @@ export default function AdminHourlyCalendar({
   const activeDate = selectedDate || todayStr;
 
   // View modes: 'month' | 'week' | 'day'
-  const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
+  const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('day');
 
   // Month navigation state
   const initialDateObj = parseLocalDate(activeDate);
@@ -159,6 +153,17 @@ export default function AdminHourlyCalendar({
 
   // Toggle for full hourly timeline in day view
   const [showFullTimeline, setShowFullTimeline] = useState(false);
+
+  const availability = calculateAvailableSlots({ date: activeDate, duration: bookingDuration,
+    workingHours, daysOff, appointments, interval: slotInterval });
+
+  const activeSchedule = workingHours.find(hour => hour.day_of_week === parseLocalDate(activeDate).getDay());
+  const timelineStart = timeStrToMinutes(activeSchedule?.start_time);
+  const timelineEnd = timeStrToMinutes(activeSchedule?.end_time);
+  const timelineSlots = activeSchedule?.is_working ? Array.from({ length: Math.max(0, Math.ceil((timelineEnd - timelineStart) / 30)) }, (_, index) => {
+    const minutes = timelineStart + index * 30;
+    return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+  }) : [];
 
   const viewYear = viewMonthDate.getFullYear();
   const viewMonth = viewMonthDate.getMonth();
@@ -317,7 +322,7 @@ export default function AdminHourlyCalendar({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-5">
+    <div className={styles.calendar}>
       {/* ───────────────────────────────────────────────────────── */}
       {/* 1. TOP TOOLBAR: VIEW TOGGLE, NAVIGATION & SEARCH */}
       {/* ───────────────────────────────────────────────────────── */}
@@ -368,6 +373,7 @@ export default function AdminHourlyCalendar({
             <div className="inline-flex items-center bg-purple-100/80 p-1 rounded-2xl border border-purple-200">
               <button
                 type="button"
+                aria-pressed={viewMode === 'month'}
                 onClick={() => setViewMode('month')}
                 className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   viewMode === 'month'
@@ -381,6 +387,7 @@ export default function AdminHourlyCalendar({
 
               <button
                 type="button"
+                aria-pressed={viewMode === 'week'}
                 onClick={() => setViewMode('week')}
                 className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   viewMode === 'week'
@@ -394,6 +401,7 @@ export default function AdminHourlyCalendar({
 
               <button
                 type="button"
+                aria-pressed={viewMode === 'day'}
                 onClick={() => setViewMode('day')}
                 className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   viewMode === 'day'
@@ -426,6 +434,7 @@ export default function AdminHourlyCalendar({
             <Search className="w-4 h-4 text-purple-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
+              aria-label="Търсене на пациенти"
               placeholder="Търсене по име, телефон или услуга..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -444,6 +453,7 @@ export default function AdminHourlyCalendar({
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <select
+              aria-label="Статус на посещенията"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full sm:w-auto px-3 py-2 rounded-xl border border-purple-200 text-xs font-bold text-purple-950 bg-white/90 hover:bg-white hover:border-purple-300 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600 transition-all cursor-pointer"
@@ -470,7 +480,7 @@ export default function AdminHourlyCalendar({
         </div>
 
         {/* Row 3: Visual Color Legend (Легенда за цветовете) */}
-        <div className="flex items-center gap-2.5 sm:gap-4 flex-wrap text-[10px] sm:text-[11px] font-semibold text-purple-900 pt-2 border-t border-purple-100">
+        {viewMode !== 'day' && <div className="flex items-center gap-2.5 sm:gap-4 flex-wrap text-[10px] sm:text-[11px] font-semibold text-purple-900 pt-2 border-t border-purple-100">
           <span className="text-purple-400 font-bold hidden sm:inline">Легенда:</span>
           
           <div className="flex items-center gap-1.5">
@@ -504,7 +514,7 @@ export default function AdminHourlyCalendar({
             <span className="w-3 h-3 rounded-md bg-slate-200 opacity-60" />
             <span className="text-slate-400 font-medium">Отминал ден</span>
           </div>
-        </div>
+        </div>}
 
       </div>
 
@@ -1169,41 +1179,8 @@ export default function AdminHourlyCalendar({
       {viewMode === 'day' && (
         <div className="space-y-4">
           
-          {/* Day Headline */}
-          <div className="bg-linear-to-r from-purple-50/80 via-white to-purple-50/60 rounded-3xl border border-purple-100 p-4 sm:p-5 shadow-sm space-y-3">
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-purple-600 ring-2 ring-purple-300" />
-                  <h3 className="font-serif text-base sm:text-xl font-bold text-purple-950">
-                    {formatBulgarianDate(activeDate)}
-                  </h3>
-                </div>
-                <p className="text-xs text-purple-800/80 font-medium mt-0.5">
-                  {activeDayAppointments.length} записани часа за деня
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowFullTimeline(!showFullTimeline)}
-                  className="text-xs font-bold text-purple-800 hover:text-purple-950 px-3 py-1.5 rounded-xl border border-purple-200 bg-purple-100/70 hover:bg-purple-200/70 transition-colors cursor-pointer"
-                >
-                  {showFullTimeline ? 'Скрий часовата линия' : 'Покажи часовата линия'}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => onNewAppointmentAt(activeDate, '10:00')}
-                  className="px-3.5 py-1.5 rounded-xl bg-linear-to-r from-purple-700 to-purple-800 hover:from-purple-800 hover:to-purple-900 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Запиши за {formatBulgarianDate(activeDate).split(' ')[0]}</span>
-                </button>
-              </div>
-            </div>
-
+          <div className={styles.daySummary}>
+            <div className={styles.daySummaryRow}><span>{activeDayAppointments.length} посещения {isFiltering ? 'по избраните филтри' : 'за деня'}</span><button type="button" onClick={() => setShowFullTimeline(!showFullTimeline)}>{showFullTimeline ? 'Скрий хронологията' : 'Покажи хронологията'}</button></div>
             {/* Day Off Banner in Day View */}
             {(() => {
               const activeDayOff = getDayOffForDate(activeDate, daysOff);
@@ -1229,95 +1206,18 @@ export default function AdminHourlyCalendar({
             })()}
           </div>
 
-          {/* Section 1: Patient Cards for the day */}
           <div className="space-y-3">
-            {activeDayAppointments.length === 0 ? (
-              <div className="bg-white rounded-3xl border border-purple-100 p-8 sm:p-12 text-center text-slate-500 text-xs space-y-3 shadow-xs">
-                <Coffee className="w-8 h-8 text-purple-400 mx-auto" />
-                <p className="font-bold text-purple-950 text-sm">Няма записани пациенти за този ден</p>
-                <p className="text-slate-500 max-w-sm mx-auto">
-                  Графикът за {formatBulgarianDate(activeDate)} е напълно свободен. Използвайте свободните интервали по-долу за записване.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => onNewAppointmentAt(activeDate, '10:00')}
-                  className="inline-flex items-center gap-1 px-4 py-2 rounded-2xl bg-purple-800 text-white font-bold text-xs shadow-sm hover:from-purple-800 hover:to-purple-900 transition-colors cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Запиши пациент</span>
-                </button>
-              </div>
-            ) : (
-              activeDayAppointments.map((apt) => renderDetailedAppointmentCard(apt))
-            )}
+            {activeDayAppointments.length === 0 ? <div className={styles.emptyDay}><Clock size={19} /><div><strong>{isFiltering ? 'Няма посещения по избраните филтри' : 'Няма записани посещения за този ден'}</strong><p>Изберете процедура и свободен час по-долу за ново записване.</p></div></div> : activeDayAppointments.map(apt => renderDetailedAppointmentCard(apt))}
           </div>
 
-          {/* Section 2: Quick free slots grid to book walk-ins */}
-          <div className="bg-linear-to-br from-white via-purple-50/20 to-purple-50/30 rounded-3xl border border-purple-200 p-4 sm:p-5 shadow-xs space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-purple-950 uppercase tracking-wider">
-                Свободни интервали за записване ({formatBulgarianDate(activeDate)}):
-              </span>
-              <span className="text-[11px] text-purple-700 font-semibold">Натиснете час за добавяне</span>
-            </div>
-
-            <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 gap-2">
-              {WORKING_HOURLY_SLOTS.map((slot) => {
-                const slotMins = timeStrToMinutes(slot);
-                const nextMins = slotMins + 30;
-
-                const hasStarting = activeDayAppointments.some((a) => {
-                  const m = timeStrToMinutes(a.start_time);
-                  return m >= slotMins && m < nextMins;
-                });
-
-                const hasOngoing = activeDayAppointments.some((a) => {
-                  const s = timeStrToMinutes(a.start_time);
-                  const e = timeStrToMinutes(a.end_time);
-                  return s < slotMins && e > slotMins;
-                });
-
-                const isOccupied = hasStarting || hasOngoing;
-                const isLunch = (slot === '13:00' || slot === '13:30') && !isOccupied;
-
-                if (isOccupied) {
-                  return (
-                    <div
-                      key={slot}
-                      className="p-2 rounded-xl bg-purple-100 border border-purple-200 text-center opacity-80"
-                    >
-                      <span className="font-mono text-xs font-bold text-purple-950 block">{slot}</span>
-                      <span className="text-[10px] text-purple-700 font-bold">Зает</span>
-                    </div>
-                  );
-                }
-
-                if (isLunch) {
-                  return (
-                    <div
-                      key={slot}
-                      className="p-2 rounded-xl bg-slate-100 border border-slate-200 text-center"
-                    >
-                      <span className="font-mono text-xs font-bold text-slate-500 block">{slot}</span>
-                      <span className="text-[10px] text-slate-400">Обяд</span>
-                    </div>
-                  );
-                }
-
-                return (
-                  <button
-                    key={slot}
-                    type="button"
-                    onClick={() => onNewAppointmentAt(activeDate, slot)}
-                    className="p-2 rounded-xl bg-white hover:bg-purple-50 text-slate-800 hover:text-purple-950 border border-purple-200 hover:border-purple-400 text-center transition-all cursor-pointer group shadow-2xs"
-                  >
-                    <span className="font-mono text-xs font-bold block">{slot}</span>
-                    <span className="text-[10px] text-purple-600 group-hover:text-purple-800 font-bold">+ Свободен</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <section className={styles.availability}>
+            <div className={styles.slotHeading}><div><span className="eyebrow">НОВО ПОСЕЩЕНИЕ</span><h3>Свободни часове</h3><p>За процедура с продължителност {bookingDuration} мин. · Съобразени с работното време и почивките.</p></div><span className={styles.slotCount}>{availability.slots.length} налични</span></div>
+            <label className={styles.serviceSelector}><span>Процедура за новия час</span><select value={bookingServiceId} onChange={event => onBookingServiceChange(event.target.value)}>{services.filter(service => service.is_active).map(service => <option key={service.id} value={service.id}>{service.title} · {service.duration_minutes} мин.</option>)}</select></label>
+            {availability.slots.length === 0 ? <p className={styles.noSlots}>{availability.reason}</p> : <div className={styles.slotGroups}>{['Сутрин', 'Следобед'].map((period, index) => {
+              const slots = availability.slots.filter(slot => index === 0 ? slot < '13:00' : slot >= '13:00');
+              return slots.length > 0 && <div key={period}><h4>{period}</h4><div className={styles.slotGrid}>{slots.map(slot => <button type="button" key={slot} onClick={() => onNewAppointmentAt(activeDate, slot)} aria-label={`Запиши час в ${slot}`}>{slot}<Plus size={12} /></button>)}</div></div>;
+            })}</div>}
+          </section>
 
           {/* Section 3: Optional Full Timeline */}
           {showFullTimeline && (
@@ -1326,20 +1226,20 @@ export default function AdminHourlyCalendar({
                 Пълна часова хронология
               </h4>
               <div className="divide-y divide-purple-100">
-                {WORKING_HOURLY_SLOTS.map((slot) => {
+                {timelineSlots.map((slot) => {
                   const slotMins = timeStrToMinutes(slot);
                   const nextSlotMins = slotMins + 30;
 
-                  const startingInSlot = activeDayAppointments.filter((apt) => {
+                  const startingInSlot = appointments.filter((apt) => {
                     const aptStart = timeStrToMinutes(apt.start_time);
-                    return aptStart >= slotMins && aptStart < nextSlotMins;
+                    return apt.date === activeDate && apt.status !== 'cancelled' && aptStart >= slotMins && aptStart < nextSlotMins;
                   });
 
-                  const ongoingInSlot = activeDayAppointments.filter((apt) => {
+                  const ongoingInSlot = appointments.filter((apt) => {
                     if (startingInSlot.some((s) => s.id === apt.id)) return false;
                     const aptStart = timeStrToMinutes(apt.start_time);
                     const aptEnd = timeStrToMinutes(apt.end_time);
-                    return aptStart < slotMins && aptEnd > slotMins;
+                    return apt.date === activeDate && apt.status !== 'cancelled' && aptStart < slotMins && aptEnd > slotMins;
                   });
 
                   const isBooked = startingInSlot.length > 0;
@@ -1365,7 +1265,7 @@ export default function AdminHourlyCalendar({
                             Продължаваща процедура (до {formatTimeHHmm(ongoingInSlot[0].end_time)} ч.)
                           </span>
                         ) : (
-                          <span className="text-xs text-purple-400 font-medium">Свободен</span>
+                          <span className="text-xs text-slate-400 font-normal">{availability.slots.includes(slot) ? 'Свободен за избраната процедура' : 'Неналичен за записване'}</span>
                         )}
                       </div>
                     </div>
@@ -1561,7 +1461,7 @@ export default function AdminHourlyCalendar({
           e.stopPropagation();
           setDetailAppointment(apt);
         }}
-        className={`p-3 sm:p-3.5 rounded-2xl border transition-all cursor-pointer hover:shadow-md text-left flex flex-col justify-between gap-2.5 ${
+        className={`${styles.appointmentCard} p-3 sm:p-3.5 rounded-2xl border transition-all cursor-pointer hover:shadow-md text-left flex flex-col justify-between gap-2.5 ${
           isCancelled
             ? 'bg-slate-50/70 border-slate-200/80 opacity-60'
             : isCompleted
@@ -1671,7 +1571,7 @@ export default function AdminHourlyCalendar({
     return (
       <div
         key={apt.id}
-        className={`p-3.5 sm:p-4 rounded-3xl border transition-all ${
+        className={`${styles.patientCard} p-3.5 sm:p-4 rounded-3xl border transition-all ${
           isCancelled
             ? 'bg-slate-50/70 border-l-4 border-l-rose-400 border-slate-200 opacity-65'
             : isCompleted

@@ -1,4 +1,3 @@
-import { Appointment, Service, ClinicSettings } from '@/types/database';
 
 export interface NotificationPayload {
   to_name: string;

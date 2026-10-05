@@ -2,12 +2,11 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import ClinicMark from '@/components/ClinicMark';
 import styles from './booking.module.css';
 import { useSearchParams } from 'next/navigation';
-import { Service, Appointment, DayOff } from '@/types/database';
-import { getServices, getAvailableSlots, addAppointment, getDaysOff } from '@/lib/storage';
-import { initialServices } from '@/lib/data/initialData';
+import { Service, Appointment, DayOff, WorkingHour } from '@/types/database';
+import { getServices, getAvailableSlots, addAppointment, getDaysOff, getWorkingHours } from '@/lib/storage';
+import { initialServices, initialWorkingHours } from '@/lib/data/initialData';
 import { formatBulgarianDate } from '@/lib/notifications';
 import { 
   CheckCircle2, 
@@ -19,8 +18,6 @@ import {
   ArrowRight, 
   ArrowLeft, 
   Check, 
-  Sun, 
-  Sunset,
   MapPin,
   ChevronLeft,
   CalendarPlus,
@@ -75,6 +72,8 @@ function BookingWizardContent() {
   const [unavailableReason, setUnavailableReason] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [isLoadingSlots, setIsLoadingSlots] = useState<boolean>(false);
+  const [workingHours, setWorkingHours] = useState<WorkingHour[]>(initialWorkingHours);
+  const [bookingError, setBookingError] = useState<string | null>(null);
   const [daysOff, setDaysOff] = useState<DayOff[]>([]);
 
   // Form inputs
@@ -91,10 +90,12 @@ function BookingWizardContent() {
   useEffect(() => {
     async function load() {
       try {
-        const [fetchedServices, fetchedDaysOff] = await Promise.all([
+        const [fetchedServices, fetchedDaysOff, fetchedWorkingHours] = await Promise.all([
           getServices(),
           getDaysOff(),
+          getWorkingHours(),
         ]);
+        setWorkingHours(fetchedWorkingHours);
         if (fetchedDaysOff) {
           setDaysOff(fetchedDaysOff);
         }
@@ -119,6 +120,7 @@ function BookingWizardContent() {
 
   // Load slots when date or service changes
   useEffect(() => {
+    let active = true;
     async function loadSlots() {
       if (!selectedService || !selectedDate) return;
       setIsLoadingSlots(true);
@@ -127,18 +129,20 @@ function BookingWizardContent() {
 
       try {
         const result = await getAvailableSlots(selectedDate, selectedService.duration_minutes);
+        if (!active) return;
         setAvailableSlots(result.slots);
         if (result.reason) {
           setUnavailableReason(result.reason);
         }
       } catch (err) {
         console.error('Failed to load slots:', err);
-        setUnavailableReason('Грешка при проверка на графика.');
+        if (active) setUnavailableReason('Грешка при проверка на графика.');
       } finally {
-        setIsLoadingSlots(false);
+        if (active) setIsLoadingSlots(false);
       }
     }
-    loadSlots();
+    void loadSlots();
+    return () => { active = false; };
   }, [selectedDate, selectedService]);
 
   // Generate 7-day quick buttons starting today with weekend and vacation flags
@@ -187,7 +191,17 @@ function BookingWizardContent() {
     }
 
     setIsSubmitting(true);
+    setBookingError(null);
     try {
+      const latest = await getAvailableSlots(selectedDate, selectedService.duration_minutes);
+      if (!latest.slots.includes(selectedSlot)) {
+        setAvailableSlots(latest.slots);
+        setUnavailableReason(latest.reason || null);
+        setSelectedSlot(null);
+        setCurrentStep(2);
+        setBookingError('Този час вече не е наличен. Моля, изберете друг свободен час.');
+        return;
+      }
       const [h, m] = selectedSlot.split(':').map(Number);
       const totalMinutes = h * 60 + m + selectedService.duration_minutes;
       const endH = Math.floor(totalMinutes / 60);
@@ -338,7 +352,7 @@ function BookingWizardContent() {
   return (
     <div className={styles.layout}>
       <aside className={styles.aside}>
-        <Link href="/" className={styles.brand}><ClinicMark />Д-р Джанел Аяз</Link>
+        <Link href="/" className={styles.brand}>Д-р Джанел Аяз</Link>
         <span className="eyebrow">ВАШЕТО ПОСЕЩЕНИЕ</span>
         <h2>Първата стъпка<br />към по-здрава<br /><em>усмивка.</em></h2>
         <p>Изберете удобен час. Ние ще отделим време за Вашите въпроси и за грижата, от която имате нужда.</p>
@@ -369,7 +383,7 @@ function BookingWizardContent() {
       <div className={`${styles.card} bg-white rounded-3xl border border-purple-100 p-5 sm:p-9 shadow-lg shadow-purple-900/5`}>
         
         {/* Header */}
-        <div className="mb-8 text-center space-y-1">
+        <div className={styles.formHeading}>
           <span className="text-xs font-bold text-purple-700 uppercase tracking-widest block">
             Д-р Джанел Аяз &middot; Търговище
           </span>
@@ -383,18 +397,12 @@ function BookingWizardContent() {
 
         {/* Step Segmented Control with Purple Highlights */}
         <div className="mb-8">
-          <div className="grid grid-cols-3 gap-1 bg-purple-50 p-1 rounded-2xl mb-2">
+          <div className={styles.stepNavigation}>
             <button
               type="button"
               aria-current={currentStep === 1 ? 'step' : undefined}
               onClick={() => setCurrentStep(1)}
-              className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition-all ${
-                currentStep === 1
-                  ? 'bg-purple-800 text-white shadow-xs'
-                  : currentStep > 1
-                  ? 'text-purple-900 hover:bg-white/60'
-                  : 'text-slate-400'
-              }`}
+              className={styles.stepButton}
             >
               1. Услуга
             </button>
@@ -404,13 +412,7 @@ function BookingWizardContent() {
               aria-current={currentStep === 2 ? 'step' : undefined}
               disabled={!selectedService}
               onClick={() => selectedService && setCurrentStep(2)}
-              className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition-all ${
-                currentStep === 2
-                  ? 'bg-purple-800 text-white shadow-xs'
-                  : currentStep > 2
-                  ? 'text-purple-900 hover:bg-white/60'
-                  : 'text-slate-400 disabled:cursor-not-allowed'
-              }`}
+              className={styles.stepButton}
             >
               2. Дата & Час
             </button>
@@ -420,34 +422,15 @@ function BookingWizardContent() {
               aria-current={currentStep === 3 ? 'step' : undefined}
               disabled={!selectedSlot}
               onClick={() => selectedSlot && setCurrentStep(3)}
-              className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition-all ${
-                currentStep === 3
-                  ? 'bg-purple-800 text-white shadow-xs'
-                  : 'text-slate-400 disabled:cursor-not-allowed'
-              }`}
+              className={styles.stepButton}
             >
               3. Данни
             </button>
           </div>
         </div>
 
-        {/* Selected Service pill when in step 2 or 3 */}
-        {currentStep > 1 && selectedService && (
-          <div className="mb-6 p-3.5 bg-purple-50/80 border border-purple-100 rounded-2xl flex items-center justify-between gap-2 text-xs">
-            <div className="flex items-center gap-2 text-slate-700 min-w-0">
-              <span className="font-bold text-purple-900 shrink-0">Избрана процедура:</span>
-              <span className="truncate font-medium">{selectedService.title}</span>
-              <span className="shrink-0 font-extrabold text-purple-900">({selectedService.price_bgn} €)</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setCurrentStep(1)}
-              className="text-purple-700 hover:text-purple-950 font-bold underline shrink-0"
-            >
-              Смяна
-            </button>
-          </div>
-        )}
+        {bookingError && <p role="alert" className={styles.error}>{bookingError}</p>}
+        {currentStep > 1 && selectedService && <div className={styles.selectedService}><div><span>ИЗБРАНА УСЛУГА</span><strong>{selectedService.title}</strong></div><div><span>{selectedService.price_bgn} €</span><button type="button" onClick={() => setCurrentStep(1)}>Промени</button></div></div>}
 
         {/* ═══════════════════════════════════════════════════════════ */}
         {/* STEP 1: SERVICE */}
@@ -463,7 +446,7 @@ function BookingWizardContent() {
               </p>
             </div>
 
-            <div className="space-y-2.5">
+            <div className={styles.serviceChoices}>
               {services
                 .filter((s) => s.is_active)
                 .map((service) => {
@@ -473,15 +456,12 @@ function BookingWizardContent() {
                       type="button"
                       key={service.id}
                       aria-label={`Изберете ${service.title}`}
+                      aria-pressed={isSelected}
                       onClick={() => handleSelectServiceAndNext(service)}
-                      className={`w-full text-left p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                        isSelected
-                          ? 'border-purple-700 bg-purple-50/80 ring-1 ring-purple-700'
-                          : 'border-slate-200 bg-white hover:border-purple-300'
-                      }`}
+                      className={styles.serviceChoice}
                     >
                       <div className="min-w-0 flex-1">
-                        <h3 className="text-sm sm:text-base font-bold text-slate-900">
+                        <h3 className="text-sm sm:text-base font-medium text-slate-900">
                           {service.title}
                         </h3>
                         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 font-medium mt-1">
@@ -490,7 +470,7 @@ function BookingWizardContent() {
                             {service.duration_minutes} мин.
                           </span>
                           {service.category && (
-                            <span className="text-purple-800 bg-purple-100 px-2 py-0.5 rounded-md text-[11px] font-semibold">
+                            <span className="text-slate-400 text-[11px] font-normal">
                               {service.category}
                             </span>
                           )}
@@ -549,101 +529,18 @@ function BookingWizardContent() {
                 variant="booking"
                 title="Календар на кабинета"
                 daysOff={daysOff}
+                isDateDisabled={(_dateStr, mondayIndex) => !workingHours.find(hour => hour.day_of_week === (mondayIndex + 1) % 7)?.is_working}
               />
             </div>
 
-            {/* Бърз избор на ден */}
-            <div className="mb-6">
-              <label className="block text-xs font-bold text-purple-700 uppercase tracking-wider mb-2.5">
-                Бърз избор на ден:
-              </label>
-              
-              <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-none">
-                {quickDates.map((item) => {
-                  const isSelected = selectedDate === item.dateStr;
-                  return (
-                    <button
-                      key={item.dateStr}
-                      type="button"
-                      onClick={() => setSelectedDate(item.dateStr)}
-                      title={
-                        item.dayOff
-                          ? `Почивен ден / Отпуск: ${item.dayOff.reason}`
-                          : item.isWeekend
-                          ? 'Уикенд (събота/неделя)'
-                          : undefined
-                      }
-                      className={`p-3 rounded-2xl text-center transition-all flex flex-col items-center justify-center border-2 shrink-0 w-19 sm:w-22 relative overflow-hidden cursor-pointer ${
-                        isSelected
-                          ? 'bg-linear-to-r from-purple-700 to-violet-800 text-white border-purple-800 shadow-md shadow-purple-900/15 scale-[1.02] z-10'
-                          : item.dayOff
-                          ? 'bg-rose-50/90 text-rose-950 border-rose-300 hover:border-rose-400 hover:bg-rose-100/80 shadow-2xs'
-                          : item.isWeekend
-                          ? 'bg-amber-50/80 text-amber-950 border-amber-200 hover:border-amber-300 hover:bg-amber-100/80 shadow-2xs'
-                          : 'bg-white text-purple-950 border-purple-100 hover:border-purple-300 hover:bg-purple-50/40'
-                      }`}
-                    >
-                      {/* SVG Cross-Hatch for Day Off in Quick Dates */}
-                      {item.dayOff && (
-                        <svg className="absolute inset-0 w-full h-full pointer-events-none stroke-rose-400/50" preserveAspectRatio="none">
-                          <line x1="0" y1="0" x2="100%" y2="100%" strokeWidth="1.5" strokeDasharray="3 2" />
-                          <line x1="100%" y1="0" x2="0" y2="100%" strokeWidth="1.5" strokeDasharray="3 2" />
-                        </svg>
-                      )}
-                      <div className="flex items-center gap-1 leading-none z-10 relative">
-                        <span
-                          className={`text-[11px] font-extrabold ${
-                            isSelected
-                              ? 'text-purple-200'
-                              : item.dayOff
-                              ? 'text-rose-900'
-                              : item.isWeekend
-                              ? 'text-amber-900'
-                              : 'text-slate-500'
-                          }`}
-                        >
-                          {item.dayName}
-                        </span>
-                        {item.dayOff ? (
-                          <span className="text-[10px]">🏖️</span>
-                        ) : item.isWeekend ? (
-                          <span className="text-[10px]">☀️</span>
-                        ) : null}
-                      </div>
-                      <span
-                        className={`text-lg font-black mt-0.5 z-10 relative ${
-                          isSelected
-                            ? 'text-white'
-                            : item.dayOff
-                            ? 'text-rose-950'
-                            : item.isWeekend
-                            ? 'text-amber-950'
-                            : 'text-slate-900'
-                        }`}
-                      >
-                        {item.dayNumber}
-                      </span>
-                      <span
-                        className={`text-[10px] font-bold z-10 relative ${
-                          isSelected
-                            ? 'text-purple-200'
-                            : item.dayOff
-                            ? 'text-rose-700'
-                            : item.isWeekend
-                            ? 'text-amber-700'
-                            : 'text-slate-400'
-                        }`}
-                      >
-                        .{String(item.monthNumber).padStart(2, '0')}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <div className={styles.quickDates} role="group" aria-label="Бърз избор на дата">{quickDates.map(item => {
+              const weekday = new Date(`${item.dateStr}T12:00:00`).getDay();
+              const disabled = Boolean(item.dayOff) || !workingHours.find(hour => hour.day_of_week === weekday)?.is_working;
+              return <button type="button" key={item.dateStr} disabled={disabled} aria-pressed={selectedDate === item.dateStr} onClick={() => setSelectedDate(item.dateStr)}><span>{item.dayName}</span><strong>{item.dayNumber}.{String(item.monthNumber).padStart(2, '0')}</strong></button>;
+            })}</div>
 
             {/* Time Slots Area */}
-            <div className="mb-6">
+            <div className={styles.times}>
               <label className="block text-xs font-bold text-purple-700 uppercase tracking-wider mb-3">
                 Свободни часове за {formatBulgarianDate(selectedDate)}:
               </label>
@@ -654,70 +551,7 @@ function BookingWizardContent() {
                   <p>Проверка на графика...</p>
                 </div>
               ) : unavailableReason ? (
-                (() => {
-                  const matchingDayOff = daysOff.find(
-                    (d) => selectedDate >= d.start_date && selectedDate <= d.end_date
-                  );
-                  const selDateObj = new Date(selectedDate);
-                  const selDayOfWeek = (selDateObj.getDay() + 6) % 7;
-                  const isWeekend = selDayOfWeek === 5 || selDayOfWeek === 6;
-
-                  if (matchingDayOff) {
-                    return (
-                      <div className="bg-rose-50 border-2 border-rose-300 rounded-3xl p-5 text-center text-rose-950 shadow-sm space-y-2">
-                        <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center mx-auto text-2xl shadow-2xs border border-rose-200">
-                          🏖️
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-black uppercase tracking-wider text-rose-600 bg-rose-200/80 px-2.5 py-0.5 rounded-full inline-block mb-1">
-                            Обявен период на отпуск / почивен ден
-                          </span>
-                          <h4 className="font-extrabold text-sm sm:text-base text-rose-950">
-                            Кабинетът не приема часове за тази дата
-                          </h4>
-                          <p className="text-xs font-bold text-rose-900 mt-1">
-                            Основание: {matchingDayOff.reason}
-                          </p>
-                          <p className="text-[11px] text-rose-700/80 mt-0.5">
-                            Период: {formatBulgarianDate(matchingDayOff.start_date)} –{' '}
-                            {formatBulgarianDate(matchingDayOff.end_date)}
-                          </p>
-                        </div>
-                        <p className="text-xs text-rose-800/80 pt-2 border-t border-rose-200/60 max-w-sm mx-auto">
-                          Моля, изберете свободен ден от календара по-горе, за да видите наличните часове.
-                        </p>
-                      </div>
-                    );
-                  }
-
-                  if (isWeekend) {
-                    return (
-                      <div className="bg-amber-50 border-2 border-amber-300 rounded-3xl p-5 text-center text-amber-950 shadow-sm space-y-2">
-                        <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mx-auto text-2xl shadow-2xs border border-amber-200">
-                          ☀️
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-200/80 px-2.5 py-0.5 rounded-full inline-block mb-1">
-                            Почивен ден за кабинета
-                          </span>
-                          <h4 className="font-extrabold text-sm sm:text-base text-amber-950">
-                            Събота и неделя са почивни дни
-                          </h4>
-                          <p className="text-xs text-amber-900 mt-1 max-w-sm mx-auto">
-                            Работното време на Д-р Джанел Аяз е от понеделник до петък (09:00 – 18:00 ч.). Моля, изберете делничен ден за преглед.
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center text-amber-800 text-xs">
-                      <p className="font-bold mb-1">Денят не е наличен</p>
-                      <p>{unavailableReason}</p>
-                    </div>
-                  );
-                })()
+                <div className={styles.noSlots}><p>{unavailableReason}</p><span>Изберете друга дата или се свържете с кабинета.</span></div>
               ) : availableSlots.length === 0 ? (
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-center text-slate-600 text-xs">
                   <p className="font-bold mb-1">Няма свободни часове за тази дата</p>
@@ -730,7 +564,7 @@ function BookingWizardContent() {
                   {morningSlots.length > 0 && (
                     <div>
                       <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                        <Sun className="w-3.5 h-3.5 text-amber-500" />
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
                         <span>Сутрин (09:00 – 13:00)</span>
                       </div>
                       <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
@@ -740,6 +574,7 @@ function BookingWizardContent() {
                             <button
                               key={slot}
                               type="button"
+                              aria-pressed={isSlotSelected}
                               onClick={() => setSelectedSlot(slot)}
                               className={`py-2.5 px-1 text-xs sm:text-sm font-bold rounded-xl border transition-all text-center ${
                                 isSlotSelected
@@ -758,7 +593,7 @@ function BookingWizardContent() {
                   {afternoonSlots.length > 0 && (
                     <div>
                       <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                        <Sunset className="w-3.5 h-3.5 text-purple-600" />
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
                         <span>Следобед (14:00 – 18:00)</span>
                       </div>
                       <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
@@ -768,6 +603,7 @@ function BookingWizardContent() {
                             <button
                               key={slot}
                               type="button"
+                              aria-pressed={isSlotSelected}
                               onClick={() => setSelectedSlot(slot)}
                               className={`py-2.5 px-1 text-xs sm:text-sm font-bold rounded-xl border transition-all text-center ${
                                 isSlotSelected
@@ -824,7 +660,7 @@ function BookingWizardContent() {
             </div>
 
             {/* Recap Box */}
-            <div className="bg-purple-50/70 border border-purple-100 rounded-2xl p-4 mb-5 text-xs sm:text-sm">
+            <div className="bg-white border-y border-purple-100 p-4 mb-5 text-xs sm:text-sm">
               <div className="flex items-center justify-between border-b border-purple-100 pb-2 mb-2">
                 <span className="text-slate-500">Процедура:</span>
                 <span className="font-bold text-slate-900 text-right">{selectedService?.title}</span>

@@ -1,3 +1,4 @@
+import { calculateAvailableSlots } from './availability';
 import {
   Service,
   WorkingHour,
@@ -38,7 +39,7 @@ const DEFAULT_TIMEOUT_MS = 4000; // 4.0 секунди за мрежова за�
  * не блокира потребителя за 10 секунди, а превключва мигновено на локален кеш.
  */
 async function runWithTimeout<T>(
-  promiseFactory: () => PromiseLike<T> | Promise<T> | any,
+  promiseFactory: () => PromiseLike<T | null>,
   timeoutMs = DEFAULT_TIMEOUT_MS
 ): Promise<T | null> {
   if (!isSupabaseConfigured || !supabase) return null;
@@ -49,7 +50,7 @@ async function runWithTimeout<T>(
   }
 
   try {
-    let timerId: any;
+    let timerId: ReturnType<typeof setTimeout> | undefined;
     const timeoutPromise = new Promise<null>((resolve) => {
       timerId = setTimeout(() => resolve(null), timeoutMs);
     });
@@ -208,7 +209,7 @@ export async function getWorkingHours(): Promise<WorkingHour[]> {
   const res = await runWithTimeout<WorkingHour[]>(async () => {
     const { data, error } = await supabase!.from('working_hours').select('*').order('day_of_week', { ascending: true });
     if (!error && data && data.length > 0) {
-      const normalized = data.map((wh: any) => ({
+      const normalized = (data as WorkingHour[]).map((wh) => ({
         ...wh,
         start_time: wh.start_time ? String(wh.start_time).slice(0, 5) : '09:00',
         end_time: wh.end_time ? String(wh.end_time).slice(0, 5) : '18:00',
@@ -236,7 +237,7 @@ export async function updateWorkingHour(day_of_week: DayOfWeek, updates: Partial
   current[index] = { ...current[index], ...updates };
   setLocalItem(STORAGE_KEYS.WORKING_HOURS, [...current], false);
 
-  const updatePayload: any = { ...updates };
+  const updatePayload: Partial<WorkingHour> = { ...updates };
   delete updatePayload.id;
   delete updatePayload.day_of_week;
 
@@ -319,7 +320,7 @@ export async function getAppointments(): Promise<Appointment[]> {
     const { data, error } = await supabase!.from('appointments').select('*').order('date', { ascending: true });
     if (!error && data) {
       const services = getLocalItem<Service[]>(STORAGE_KEYS.SERVICES, initialServices);
-      const enriched: Appointment[] = data.map((apt: any) => {
+      const enriched: Appointment[] = (data as Appointment[]).map((apt) => {
         const srv = services.find((s) => s.id === apt.service_id);
         const startTime = apt.start_time ? String(apt.start_time).slice(0, 5) : apt.start_time;
         const endTime = apt.end_time ? String(apt.end_time).slice(0, 5) : apt.end_time;
@@ -365,7 +366,7 @@ export async function addAppointment(
       appointmentData.service_id
     );
 
-    const basePayload: any = {
+    const basePayload: Record<string, string | number | boolean | null | undefined> = {
       patient_name: appointmentData.patient_name,
       patient_phone: appointmentData.patient_phone,
       patient_email: appointmentData.patient_email || null,
@@ -381,7 +382,7 @@ export async function addAppointment(
       basePayload.service_id = appointmentData.service_id;
     }
 
-    const fullPayload: any = {
+    const fullPayload: Record<string, string | number | boolean | null | undefined> = {
       ...basePayload,
       service_title: appointmentData.service_title,
       service_duration: appointmentData.service_duration,
@@ -437,113 +438,15 @@ export async function sendAppointmentReminder(id: string): Promise<{ success: bo
 // ==========================================
 // 6. АЛГОРИТЪМ ЗА ИЗЧИСЛЯВАНЕ НА СВОБОДНИ ЧАСОВЕ
 // ==========================================
-function parseLocalDate(dateStr: string): Date {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return new Date(y, (m || 1) - 1, d || 1);
-}
-
-function timeToMinutes(timeStr?: string | null): number {
-  if (!timeStr) return 0;
-  const clean = String(timeStr).trim();
-  const match = clean.match(/^(\d{1,2}):(\d{2})/);
-  if (!match) return 0;
-  return Number(match[1]) * 60 + Number(match[2]);
-}
-
-function minutesToTime(mins: number): string {
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
 export async function getAvailableSlots(
   dateStr: string,
   durationMinutes: number
 ): Promise<{ slots: string[]; reason?: string }> {
-  const dateObj = parseLocalDate(dateStr);
-  const dayOfWeek = dateObj.getDay() as DayOfWeek;
-
-  // Паралелно извличане за максимална скорост (1ms вместо 3 последователни изчаквания)
-  const [daysOff, workingHours, allAppointments] = await Promise.all([
-    getDaysOff(),
-    getWorkingHours(),
-    getAppointments(),
+  const [daysOff, workingHours, appointments, settings] = await Promise.all([
+    getDaysOff(), getWorkingHours(), getAppointments(), getClinicSettings(),
   ]);
-
-  // 1. Почивни дни / отпуски
-  const matchingDayOff = daysOff.find((d) => dateStr >= d.start_date && dateStr <= d.end_date);
-  if (matchingDayOff) {
-    return {
-      slots: [],
-      reason: `Неработен ден (${matchingDayOff.reason})`,
-    };
-  }
-
-  // 2. Работно време
-  const daySchedule = workingHours.find((wh) => wh.day_of_week === dayOfWeek);
-
-  if (!daySchedule || !daySchedule.is_working) {
-    return {
-      slots: [],
-      reason: 'Почивен ден за кабинета',
-    };
-  }
-
-  const startMinutes = timeToMinutes(daySchedule.start_time);
-  const endMinutes = timeToMinutes(daySchedule.end_time);
-  const breakStart = daySchedule.break_start ? timeToMinutes(daySchedule.break_start) : null;
-  const breakEnd = daySchedule.break_end ? timeToMinutes(daySchedule.break_end) : null;
-
-  // 3. Заети часове
-  const dayAppointments = allAppointments.filter(
-    (apt) => apt.date === dateStr && apt.status !== 'cancelled'
-  );
-
-  const busyIntervals: { start: number; end: number }[] = [];
-
-  if (breakStart !== null && breakEnd !== null) {
-    busyIntervals.push({ start: breakStart, end: breakEnd });
-  }
-
-  for (const apt of dayAppointments) {
-    busyIntervals.push({
-      start: timeToMinutes(apt.start_time),
-      end: timeToMinutes(apt.end_time),
-    });
-  }
-
-  // 4. Генериране на кандидат слотове
-  const slotInterval = 15;
-  const availableSlots: string[] = [];
-
-  const now = new Date();
-  const isToday =
-    now.getFullYear() === dateObj.getFullYear() &&
-    now.getMonth() === dateObj.getMonth() &&
-    now.getDate() === dateObj.getDate();
-  const currentMinutesNow = now.getHours() * 60 + now.getMinutes() + 15;
-
-  for (let current = startMinutes; current + durationMinutes <= endMinutes; current += slotInterval) {
-    const slotStart = current;
-    const slotEnd = current + durationMinutes;
-
-    if (isToday && slotStart < currentMinutesNow) {
-      continue;
-    }
-
-    const overlaps = busyIntervals.some((busy) => {
-      return slotStart < busy.end && slotEnd > busy.start;
-    });
-
-    if (!overlaps) {
-      availableSlots.push(minutesToTime(slotStart));
-    }
-  }
-
-  return {
-    slots: availableSlots,
-    reason: availableSlots.length === 0 ? 'Няма свободни часове за тази дата' : undefined,
-  };
+  return calculateAvailableSlots({ date: dateStr, duration: durationMinutes, workingHours,
+    daysOff, appointments, interval: settings.slot_interval_minutes });
 }
 
 // ==========================================
@@ -560,7 +463,7 @@ export async function syncWithSupabase(): Promise<{ synced: boolean; message: st
 
   // 1. Проверяваме дали Supabase е събуден и отговаря
   const isAlive = await runWithTimeout(async () => {
-    const { data, error } = await supabase!.from('clinic_settings').select('id').limit(1);
+    const { error } = await supabase!.from('clinic_settings').select('id').limit(1);
     return !error;
   }, 5000);
 
@@ -577,12 +480,12 @@ export async function syncWithSupabase(): Promise<{ synced: boolean; message: st
     const { data: remoteAppointments } = await supabase.from('appointments').select('*').order('date', { ascending: true });
 
     if (remoteAppointments) {
-      const remoteIds = new Set(remoteAppointments.map((a: any) => a.id));
+      const remoteIds = new Set((remoteAppointments as Appointment[]).map((a) => a.id));
 
       for (const apt of localAppointments) {
         if (!remoteIds.has(apt.id)) {
           const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(apt.service_id);
-          const payload: any = {
+          const payload: Record<string, string | number | boolean | null | undefined> = {
             patient_name: apt.patient_name,
             patient_phone: apt.patient_phone,
             patient_email: apt.patient_email || null,
@@ -602,7 +505,7 @@ export async function syncWithSupabase(): Promise<{ synced: boolean; message: st
       const { data: finalRemote } = await supabase.from('appointments').select('*').order('date', { ascending: true });
       if (finalRemote && finalRemote.length > 0) {
         const services = getLocalItem<Service[]>(STORAGE_KEYS.SERVICES, initialServices);
-        const enriched: Appointment[] = finalRemote.map((apt: any) => {
+        const enriched: Appointment[] = (finalRemote as Appointment[]).map((apt) => {
           const srv = services.find((s) => s.id === apt.service_id);
           return {
             ...apt,

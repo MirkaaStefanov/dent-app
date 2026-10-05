@@ -18,29 +18,20 @@ export default function HomePage() {
   const [services, setServices] = useState<Service[]>(initialServices);
   const [workingHours, setWorkingHours] = useState<WorkingHour[]>(initialWorkingHours);
 
-  const loadData = async () => {
-    try {
-      const [fetchedServices, fetchedHours] = await Promise.all([
-        getServices(),
-        getWorkingHours(),
-      ]);
-      setServices(fetchedServices);
-      setWorkingHours(fetchedHours);
-    } catch (err) {
-      console.error('Failed to load home page data:', err);
-    }
-  };
-
   useEffect(() => {
-    loadData();
-
-    const handleUpdate = () => {
-      loadData();
-    };
-
-    window.addEventListener('dent_data_updated', handleUpdate);
+    let active = true;
+    const loadData = () => Promise.all([getServices(), getWorkingHours()])
+      .then(([fetchedServices, fetchedHours]) => {
+        if (!active) return;
+        setServices(fetchedServices);
+        setWorkingHours(fetchedHours);
+      })
+      .catch(err => console.error('Failed to load home page data:', err));
+    void loadData();
+    window.addEventListener('dent_data_updated', loadData);
     return () => {
-      window.removeEventListener('dent_data_updated', handleUpdate);
+      active = false;
+      window.removeEventListener('dent_data_updated', loadData);
     };
   }, []);
 

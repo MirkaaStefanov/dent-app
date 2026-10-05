@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import ClinicMark from '@/components/ClinicMark';
 import styles from './admin.module.css';
+import { calculateAvailableSlots } from '@/lib/availability';
 import {
   Service,
   WorkingHour,
@@ -26,6 +27,7 @@ import {
   addDayOff,
   deleteDayOff,
   getAppointments,
+  getAvailableSlots,
   addAppointment,
   updateAppointmentStatus,
   deleteAppointment,
@@ -48,7 +50,6 @@ import {
   Lock,
   Building,
   CalendarOff,
-  Check,
   Euro,
   Users,
 
@@ -75,6 +76,10 @@ function ToothIcon({ className = "w-5 h-5" }: { className?: string }) {
   );
 }
 
+function loadAdminData() {
+  return Promise.all([getAppointments(), getServices(), getWorkingHours(), getDaysOff(), getClinicSettings()]);
+}
+
 export default function AdminPage() {
   // Автентикация
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -96,6 +101,8 @@ export default function AdminPage() {
 
   // Интерактивен поп-ъп за KPI броячите (Днес, Предстоящи, Приключили, Оборот)
   const [activeKpiModal, setActiveKpiModal] = useState<'today' | 'upcoming' | 'completed' | 'revenue' | null>(null);
+
+  const manualDialogRef = useRef<HTMLDivElement>(null);
 
   // Модал за записване на час от лекарката (ръчно за пациент от телефона)
   const [isManualBookingOpen, setIsManualBookingOpen] = useState<boolean>(false);
@@ -154,51 +161,45 @@ export default function AdminPage() {
     checkAuth();
   }, []);
 
-  // Зареждане на всички данни
-  const fetchAllData = async (showSpinner = false) => {
+  const applyAdminData = useCallback(([apts, srvs, hrs, doff, setts]: Awaited<ReturnType<typeof loadAdminData>>) => {
+    setAppointments(apts);
+    setServices(srvs);
+    setWorkingHours(hrs);
+    setDaysOff(doff);
+    setSettings(setts);
+    if (srvs.length > 0) setManualServiceId(current => current || srvs[0].id);
+  }, []);
+
+  const fetchAllData = useCallback(async (showSpinner = false) => {
     if (showSpinner) setIsLoading(true);
     try {
-      const [apts, srvs, hrs, doff, setts] = await Promise.all([
-        getAppointments(),
-        getServices(),
-        getWorkingHours(),
-        getDaysOff(),
-        getClinicSettings(),
-      ]);
-      setAppointments(apts);
-      setServices(srvs);
-      setWorkingHours(hrs);
-      setDaysOff(doff);
-      setSettings(setts);
-      if (srvs.length > 0 && !manualServiceId) {
-        setManualServiceId(srvs[0].id);
-      }
+      applyAdminData(await loadAdminData());
     } catch (err) {
       console.error('Error fetching admin data:', err);
     } finally {
       if (showSpinner) setIsLoading(false);
     }
-  };
+  }, [applyAdminData]);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchAllData(true);
+    if (!isAuthenticated) return;
+    let active = true;
+    void loadAdminData().then(data => {
+      if (active) applyAdminData(data);
+    }).catch(err => console.error('Error fetching admin data:', err))
+      .finally(() => { if (active) setIsLoading(false); });
 
-      const handleStorageUpdate = (e: StorageEvent) => {
-        if (e.key && e.key.startsWith('dent_')) {
-          fetchAllData(false);
-        }
-      };
-
-      window.addEventListener('storage', handleStorageUpdate);
-      const interval = setInterval(() => fetchAllData(false), 30000); // auto-sync new appointments silently every 30s
-
-      return () => {
-        window.removeEventListener('storage', handleStorageUpdate);
-        clearInterval(interval);
-      };
-    }
-  }, [isAuthenticated]);
+    const handleStorageUpdate = (event: StorageEvent) => {
+      if (event.key?.startsWith('dent_')) void fetchAllData(false);
+    };
+    window.addEventListener('storage', handleStorageUpdate);
+    const interval = setInterval(() => void fetchAllData(false), 30000);
+    return () => {
+      active = false;
+      window.removeEventListener('storage', handleStorageUpdate);
+      clearInterval(interval);
+    };
+  }, [isAuthenticated, fetchAllData, applyAdminData]);
 
   // Затваряне на KPI поп-ъп модала при натискане на Escape
   useEffect(() => {
@@ -212,6 +213,23 @@ export default function AdminPage() {
     }
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeKpiModal]);
+
+  useEffect(() => {
+    if (!isManualBookingOpen) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    manualDialogRef.current?.querySelector<HTMLInputElement>('input')?.focus();
+    const trapFocus = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsManualBookingOpen(false);
+      if (event.key !== 'Tab') return;
+      const controls = manualDialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled)');
+      if (!controls?.length) return;
+      const first = controls[0], last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', trapFocus);
+    return () => { document.removeEventListener('keydown', trapFocus); previousFocus?.focus(); };
+  }, [isManualBookingOpen]);
 
   // Google Вход
   const handleGoogleLogin = async () => {
@@ -302,6 +320,12 @@ export default function AdminPage() {
     setManualSubmitting(true);
     try {
       const selectedSrv = services.find((s) => s.id === manualServiceId) || services[0];
+      if (!selectedSrv) return;
+      const availability = await getAvailableSlots(manualDate, selectedSrv.duration_minutes);
+      if (!availability.slots.includes(manualTime)) {
+        showToast('Този час не е свободен за избраната процедура. Изберете друг час.');
+        return;
+      }
       const [h, m] = manualTime.split(':').map(Number);
       const totalMinutes = h * 60 + m + selectedSrv.duration_minutes;
       const endH = Math.floor(totalMinutes / 60);
@@ -428,15 +452,14 @@ export default function AdminPage() {
   };
 
   // Статистики за таблото
-  const todayStr = new Date().toISOString().split('T')[0];
+  const currentLocalDate = new Date();
+  const todayStr = `${currentLocalDate.getFullYear()}-${String(currentLocalDate.getMonth() + 1).padStart(2, '0')}-${String(currentLocalDate.getDate()).padStart(2, '0')}`;
+  const manualAvailability = calculateAvailableSlots({ date: manualDate,
+    duration: services.find(service => service.id === manualServiceId)?.duration_minutes || 30,
+    workingHours, daysOff, appointments, interval: settings?.slot_interval_minutes });
 
   // Брой активни часове по дати за календара
-  const appointmentsByDate = appointments.reduce((acc, apt) => {
-    if (apt.status !== 'cancelled') {
-      acc[apt.date] = (acc[apt.date] || 0) + 1;
-    }
-    return acc;
-  }, {} as Record<string, number>);
+
 
   const todayAppointments = appointments.filter((a) => a.date === todayStr && a.status !== 'cancelled');
   const todayCount = todayAppointments.length;
@@ -850,7 +873,12 @@ export default function AdminPage() {
                 selectedDate={selectedDateFilter || todayStr}
                 onSelectDate={(d) => setSelectedDateFilter(d)}
                 appointments={appointments}
-                appointmentsByDate={appointmentsByDate}
+                services={services}
+                bookingServiceId={manualServiceId}
+                onBookingServiceChange={setManualServiceId}
+                workingHours={workingHours}
+                slotInterval={settings?.slot_interval_minutes}
+                bookingDuration={services.find(service => service.id === manualServiceId)?.duration_minutes || 30}
                 daysOff={daysOff}
                 onStatusChange={handleStatusChange}
                 onSendReminder={handleSendReminder}
@@ -1317,16 +1345,14 @@ export default function AdminPage() {
       {/* ========================================================= */}
       {isManualBookingOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="max-w-lg w-full bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+          <div ref={manualDialogRef} role="dialog" aria-modal="true" aria-labelledby="manual-booking-title" className={styles.manualModal}>
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-extrabold text-slate-900 text-base sm:text-lg flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center border border-purple-100">
-                  <PlusCircle className="w-4 h-4" />
-                </div>
-                <span>Запиши час за пациент (Телефон / На място)</span>
+              <h3 id="manual-booking-title" className="font-serif text-2xl font-normal text-slate-900">
+                Ново посещение
               </h3>
               <button
                 type="button"
+                aria-label="Затвори записването"
                 onClick={() => setIsManualBookingOpen(false)}
                 className="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center cursor-pointer"
               >
@@ -1336,10 +1362,10 @@ export default function AdminPage() {
 
             <form onSubmit={handleManualBookingSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="manual-field-1" className="block text-xs font-bold text-slate-700 mb-1">
                   Име и фамилия на пациента *
                 </label>
-                <input
+                <input id="manual-field-1"
                   type="text"
                   required
                   value={manualName}
@@ -1351,10 +1377,10 @@ export default function AdminPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label htmlFor="manual-field-2" className="block text-xs font-bold text-slate-700 mb-1">
                     Телефонен номер *
                   </label>
-                  <input
+                  <input id="manual-field-2"
                     type="tel"
                     required
                     value={manualPhone}
@@ -1365,10 +1391,10 @@ export default function AdminPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label htmlFor="manual-field-3" className="block text-xs font-bold text-slate-700 mb-1">
                     Имейл адрес (по избор)
                   </label>
-                  <input
+                  <input id="manual-field-3"
                     type="email"
                     value={manualEmail}
                     onChange={(e) => setManualEmail(e.target.value)}
@@ -1379,10 +1405,10 @@ export default function AdminPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="manual-field-4" className="block text-xs font-bold text-slate-700 mb-1">
                   Изберете процедура *
                 </label>
-                <select
+                <select id="manual-field-4"
                   value={manualServiceId}
                   onChange={(e) => setManualServiceId(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
@@ -1397,10 +1423,10 @@ export default function AdminPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label htmlFor="manual-field-5" className="block text-xs font-bold text-slate-700 mb-1">
                     Дата *
                   </label>
-                  <input
+                  <input id="manual-field-5"
                     type="date"
                     required
                     value={manualDate}
@@ -1410,40 +1436,23 @@ export default function AdminPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label htmlFor="manual-field-6" className="block text-xs font-bold text-slate-700 mb-1">
                     Начален час *
                   </label>
-                  <input
-                    type="time"
-                    required
-                    value={manualTime}
-                    onChange={(e) => setManualTime(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs bg-white font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
-                  />
-                  <div className="flex flex-wrap gap-1 mt-1.5">
-                    {['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'].map((slot) => (
-                      <button
-                        key={slot}
-                        type="button"
-                        onClick={() => setManualTime(slot)}
-                        className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold border transition-all cursor-pointer ${
-                          manualTime === slot
-                            ? 'bg-purple-800 text-white border-purple-800'
-                            : 'bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100'
-                        }`}
-                      >
-                        {slot}
-                      </button>
-                    ))}
-                  </div>
+                  <select id="manual-field-6" required aria-label="Свободен начален час" value={manualAvailability.slots.includes(manualTime) ? manualTime : ''} onChange={event => setManualTime(event.target.value)} className="w-full px-3.5 py-2.5 border border-slate-300 text-sm bg-white">
+                    <option value="">Изберете свободен час</option>
+                    {manualAvailability.slots.map(slot => <option key={slot} value={slot}>{slot}</option>)}
+                  </select>
+                  {manualAvailability.slots.length === 0 && <p role="status" className="text-xs text-slate-500 mt-2">{manualAvailability.reason}</p>}
+
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="manual-field-7" className="block text-xs font-bold text-slate-700 mb-1">
                   Бележка / Оплакване на пациента (по избор)
                 </label>
-                <input
+                <input id="manual-field-7"
                   type="text"
                   value={manualNotes}
                   onChange={(e) => setManualNotes(e.target.value)}
@@ -1497,10 +1506,10 @@ export default function AdminPage() {
 
             <form onSubmit={handleAddServiceSubmit} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="manual-field-8" className="block text-xs font-bold text-slate-700 mb-1">
                   Име на процедурата *
                 </label>
-                <input
+                <input id="manual-field-8"
                   type="text"
                   required
                   value={newServiceTitle}
@@ -1511,10 +1520,10 @@ export default function AdminPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="manual-field-9" className="block text-xs font-bold text-slate-700 mb-1">
                   Категория
                 </label>
-                <input
+                <input id="manual-field-9"
                   type="text"
                   value={newServiceCategory}
                   onChange={(e) => setNewServiceCategory(e.target.value)}
@@ -1525,10 +1534,10 @@ export default function AdminPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label htmlFor="manual-field-10" className="block text-xs font-bold text-slate-700 mb-1">
                     Продължителност (мин) *
                   </label>
-                  <input
+                  <input id="manual-field-10"
                     type="number"
                     required
                     min={15}
@@ -1540,10 +1549,10 @@ export default function AdminPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label htmlFor="manual-field-11" className="block text-xs font-bold text-slate-700 mb-1">
                     Цена (€) *
                   </label>
-                  <input
+                  <input id="manual-field-11"
                     type="number"
                     required
                     min={0}
@@ -1555,10 +1564,10 @@ export default function AdminPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="manual-field-12" className="block text-xs font-bold text-slate-700 mb-1">
                   Описание на процедурата
                 </label>
-                <textarea
+                <textarea id="manual-field-12"
                   rows={3}
                   value={newServiceDesc}
                   onChange={(e) => setNewServiceDesc(e.target.value)}

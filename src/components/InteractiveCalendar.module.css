@@ -1,0 +1,16 @@
+.calendar { padding: 22px 0; border-top: 1px solid #e7dfeb; border-bottom: 1px solid #e7dfeb; color: #4f3b59; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.header h3 { font-size: 14px; font-weight: 500; }
+.header > div { display: flex; gap: 4px; }
+.header button { min-width: 40px; min-height: 40px; display: grid; place-items: center; font-size: 10px; cursor: pointer; }
+.header button:hover { background: #f7f2fa; }
+.weekdays, .days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; text-align: center; }
+.weekdays { margin-bottom: 8px; font-size: 10px; color: #b0a2b6; }
+.days button { min-height: 44px; border: 1px solid transparent; border-radius: 3px; font-size: 12px; font-weight: 400; cursor: pointer; }
+.days button:hover { background: #f7f2fa; border-color: #e2d4e9; }
+.days button[aria-pressed="true"] { background: #563064; color: white; }
+.days button[aria-current="date"] { border-color: #b59ac3; }
+.days button[data-outside] { color: #c2b8c7; }
+.days button:disabled { color: #d1c8d6; cursor: default; background: none; border-color: transparent; }
+.selection { font-size: 10px; color: #aa99b1; margin-top: 20px; }
+.selection strong { font-weight: 400; color: #765482; }

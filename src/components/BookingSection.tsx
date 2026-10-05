@@ -70,14 +70,6 @@ export default function BookingSection({
     loadDaysOff();
   }, []);
 
-  // When selectedService is picked from outside (Services section)
-  // advance to Step 2 smoothly
-  useEffect(() => {
-    if (selectedService && currentStep === 1) {
-      // Keep on step 1 or allow smooth progression
-    }
-  }, [selectedService]);
-
   // Load slots when date or service changes
   useEffect(() => {
     async function loadSlots() {

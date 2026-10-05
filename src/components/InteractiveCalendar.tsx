@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import styles from './InteractiveCalendar.module.css';
 import {
   ChevronLeft,
   ChevronRight,
   Calendar as CalendarIcon,
-  CalendarOff,
 } from 'lucide-react';
 import { formatBulgarianDate } from '@/lib/notifications';
 import { DayOff } from '@/types/database';
@@ -64,13 +64,15 @@ export default function InteractiveCalendar({
     new Date(initialDate.getFullYear(), initialDate.getMonth(), 1)
   );
 
-  // Sync month view if selected date is changed externally
-  useEffect(() => {
+  // Follow external date changes without a second effect-driven render.
+  const [lastSelectedDate, setLastSelectedDate] = useState(selectedDate);
+  if (selectedDate !== lastSelectedDate) {
+    setLastSelectedDate(selectedDate);
     if (selectedDate && /^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) {
-      const [y, m] = selectedDate.split('-').map(Number);
-      setViewDate(new Date(y, m - 1, 1));
+      const [year, month] = selectedDate.split('-').map(Number);
+      setViewDate(new Date(year, month - 1, 1));
     }
-  }, [selectedDate]);
+  }
 
   const viewYear = viewDate.getFullYear();
   const viewMonth = viewDate.getMonth();
@@ -134,6 +136,20 @@ export default function InteractiveCalendar({
     if (isDateDisabled && isDateDisabled(dateStr, dayOfWeek)) return true;
     return false;
   };
+
+  if (variant === 'booking') {
+    const cells = [...prevMonthDays, ...currentMonthDays, ...nextMonthDays];
+    return <div className={`${styles.calendar} ${className}`}>
+      <div className={styles.header}><h3>{BG_MONTHS[viewMonth]} {viewYear}</h3><div><button type="button" onClick={handleJumpToToday}>Днес</button><button type="button" aria-label="Предишен месец" onClick={handlePrevMonth}><ChevronLeft size={17} /></button><button type="button" aria-label="Следващ месец" onClick={handleNextMonth}><ChevronRight size={17} /></button></div></div>
+      <div className={styles.weekdays}>{BG_DAYS_HEADER.map(day => <span key={day}>{day}</span>)}</div>
+      <div className={styles.days}>{cells.map((item, index) => {
+        const inMonth = index >= prevMonthDays.length && index < prevMonthDays.length + currentMonthDays.length;
+        const disabled = checkDisabled(item.dateStr, index % 7) || Boolean(getDayOffForDate(item.dateStr, daysOff));
+        return <button type="button" key={item.dateStr} disabled={disabled} data-outside={!inMonth || undefined} aria-pressed={selectedDate === item.dateStr} aria-current={item.dateStr === todayStr ? 'date' : undefined} aria-label={formatBulgarianDate(item.dateStr)} onClick={() => onSelectDate(item.dateStr)}>{item.dayNum}</button>;
+      })}</div>
+      <p className={styles.selection}>Избрана дата: <strong>{formatBulgarianDate(selectedDate)}</strong></p>
+    </div>;
+  }
 
   return (
     <div

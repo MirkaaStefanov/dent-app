@@ -1,22 +1,61 @@
-.page { min-height: 100vh; background: #f7f2fa; padding: 0 24px 48px; }
-.layout { max-width: 1200px; margin: auto; display: grid; grid-template-columns: .85fr 1.15fr; gap: 72px; align-items: start; padding: 48px 0; }
-.aside { position: sticky; top: 48px; padding-top: 10px; color: #392842; }
-.brand { display: flex; align-items: center; gap: 12px; font: 22px var(--font-serif); margin-bottom: 70px; }
-.brand svg { width: 38px; height: 42px; color: #754593; --mark-line: #f7f2fa; }
-.aside h2 { font: 46px/1.18 var(--font-serif); letter-spacing: -.035em; margin: 22px 0; }
-.aside em { color: #8b60a2; }
-.aside > p { font-size: 14px; line-height: 1.9; color: #786980; max-width: 340px; }
-.aside ol { display: grid; gap: 25px; margin: 40px 0; }
-.aside li { display: flex; align-items: center; gap: 16px; }
-.aside li > span { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid #ddcde6; border-radius: 50%; color: #916da4; font-size: 11px; }
-.aside strong { font-size: 13px; font-weight: 600; display: block; }
-.aside small { font-size: 11px; color: #8c7b95; display: block; margin-top: 4px; }
-.help { display: flex; gap: 14px; align-items: center; border-top: 1px solid #e2d7e8; padding-top: 25px; color: #7b538f; font-size: 11px; }
-.help strong { margin-top: 5px; font-size: 17px; }
+.page { min-height: 100vh; background: #f5f2f6; padding: 0 32px 60px; }
+.layout { max-width: 1180px; margin: auto; display: grid; grid-template-columns: .75fr 1.25fr; gap: 90px; align-items: start; padding: 48px 0; }
+.aside { position: sticky; top: 48px; color: #392842; }
+.brand { display: block; font: 24px var(--font-serif); padding-bottom: 25px; border-bottom: 1px solid #e0d7e5; margin-bottom: 55px; }
+.aside h2 { font: 43px/1.23 var(--font-serif); letter-spacing: -.035em; margin: 22px 0; }
+.aside em { color: #845e98; }
+.aside > p { font-size: 13px; line-height: 1.9; color: #817488; max-width: 320px; }
+.aside ol { display: grid; gap: 24px; margin: 35px 0; }
+.aside li { display: flex; align-items: baseline; gap: 18px; }
+.aside li > span { color: #b29abd; font-size: 12px; font-variant-numeric: tabular-nums; }
+.aside strong { font-size: 12px; font-weight: 500; display: block; }
+.aside small { font-size: 10px; color: #95879d; display: block; margin-top: 6px; }
+.help { display: flex; gap: 14px; align-items: center; border-top: 1px solid #e0d7e5; padding-top: 25px; color: #856891; font-size: 10px; }
+.help strong { margin-top: 6px; font-size: 16px; }
 .formArea { min-width: 0; }
-.card { box-shadow: 0 16px 50px #53326008; border-color: #e9dfef; }
-.card h1 { font-size: 34px; font-weight: 400; margin: 14px 0; }
-.card input, .card textarea { background: #fcfafd; min-height: 46px; border-color: #e1d6e7; }
-.card button { min-height: 42px; }
-@media (max-width: 1023px) { .layout { gap: 35px; } .aside h2 { font-size: 38px; } }
-@media (max-width: 767px) { .page { padding: 0 16px 30px; } .layout { display: block; padding-top: 24px; } .aside { display: none; } .card { padding: 25px 18px; } .card h1 { font-size: 29px; } }
+.card { box-shadow: none; border: 1px solid #e6dfe9; border-radius: 8px; padding: 38px; background: white; }
+.formHeading { margin-bottom: 32px; }
+.formHeading > span { font-size: 9px; font-weight: 500; color: #8f719c; letter-spacing: .16em; }
+.formHeading h1 { font: 37px/1.2 var(--font-serif); font-weight: 400; margin: 16px 0 12px; letter-spacing: -.03em; color: #37243e; }
+.formHeading p { font-size: 12px; color: #92839a; line-height: 1.8; }
+.stepNavigation { display: flex; border-bottom: 1px solid #e7dfeb; gap: 24px; }
+.stepButton { flex: 1; min-height: 48px; padding: 14px 0; color: #a195a7; font-size: 11px; text-align: left; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; }
+.stepButton[aria-current="step"] { color: #684078; border-bottom-color: #684078; }
+.stepButton:disabled { cursor: default; color: #b9b0be; }
+.serviceChoices { border-top: 1px solid #ece5ef; }
+.serviceChoice { display: flex; align-items: center; justify-content: space-between; gap: 24px; width: 100%; text-align: left; padding: 20px 5px; border-bottom: 1px solid #ece5ef; cursor: pointer; }
+.serviceChoice:hover { background: #faf7fc; }
+.serviceChoice[aria-pressed="true"] { background: #f8f4fa; }
+.serviceChoice h3 { font-size: 14px; font-weight: 500; line-height: 1.55; }
+.serviceChoice > div:last-child > span:first-child { font-size: 19px; font-weight: 500; }
+.serviceChoice > div:last-child > span:last-child { font-weight: 500; font-size: 10px; }
+.card input, .card textarea { background: white; min-height: 48px; border-radius: 4px; border-color: #dfd5e5; font-weight: 400; }
+.card label { font-weight: 500; }
+.card h2 { font-size: 16px; font-weight: 500; }
+.card :global(.rounded-3xl), .card :global(.rounded-2xl) { border-radius: 6px; }
+.card :global(.rounded-xl), .card :global(.rounded-full) { border-radius: 4px; }
+.card :global(.font-extrabold) { font-weight: 500; }
+.card :global(.shadow-md), .card :global(.shadow-lg) { box-shadow: none; }
+.card button { min-height: 44px; }
+.times { margin: 30px 0; }
+.times button { border-radius: 3px; font-weight: 400; font-size: 13px; font-variant-numeric: tabular-nums; min-height: 46px; }
+.times button[aria-pressed="true"] { background: #563064; border-color: #563064; color: white; }
+@media (max-width: 1023px) { .layout { gap: 40px; grid-template-columns: .65fr 1.35fr; } .aside h2 { font-size: 35px; } .card { padding: 28px; } }
+@media (max-width: 767px) { .page { padding: 0 20px 30px; background: #fff; } .layout { display: block; padding-top: 24px; } .aside { display: none; } .card { padding: 25px 0; border: 0; } .formHeading h1 { font-size: 34px; } .stepNavigation { gap: 14px; } .stepButton { font-size: 10px; } .serviceChoice { gap: 16px; padding: 18px 0; } .serviceChoice h3 { font-size: 13px; } }
+.quickDates { display: flex; gap: 8px; overflow-x: auto; padding: 5px 0 16px; margin-bottom: 15px; }
+.quickDates button { flex: 1 0 54px; padding: 10px 6px; border-bottom: 1px solid #e4dce9; color: #9a87a3; cursor: pointer; }
+.quickDates span { display: block; font-size: 9px; }
+.quickDates strong { display: block; font-size: 11px; font-weight: 400; margin-top: 7px; }
+.quickDates button[aria-pressed="true"] { color: #563064; border-bottom-color: #563064; }
+.quickDates button:disabled { color: #d0c5d6; cursor: default; }
+.noSlots { border-left: 2px solid #cbb7d6; padding: 18px 20px; background: #faf8fc; }
+.noSlots p { color: #745381; font-size: 13px; }
+.noSlots span { display: block; margin-top: 8px; font-size: 11px; color: #9b8ca4; }
+.error { padding: 16px; border-left: 2px solid #a4556d; background: #fff7fa; color: #914560; font-size: 12px; line-height: 1.7; margin-bottom: 20px; }
+.selectedService { display: flex; justify-content: space-between; gap: 22px; padding-bottom: 25px; margin-bottom: 25px; border-bottom: 1px solid #e7dfeb; }
+.selectedService > div:first-child { min-width: 0; }
+.selectedService > div:first-child > span { font-size: 9px; font-weight: 400; letter-spacing: .12em; color: #ac97b6; }
+.selectedService strong { display: block; font-size: 13px; font-weight: 400; color: #6d5279; margin-top: 8px; line-height: 1.6; }
+.selectedService > div:last-child { flex-shrink: 0; text-align: right; }
+.selectedService > div:last-child > span { font-size: 17px; color: #684078; }
+.selectedService button { display: block; font-size: 10px; color: #9c85a7; font-weight: 400; text-decoration: underline; }
