@@ -829,13 +829,15 @@ function BookingWizardContent() {
             {/* Inputs */}
             <div className="space-y-4 mb-6">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="patient-name" className="block text-xs font-bold text-slate-700 mb-1">
                   Име и фамилия <span className="text-purple-600">*</span>
                 </label>
                 <div className="relative">
                   <User className="w-4 h-4 text-purple-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
+                    id="patient-name"
+                    autoComplete="name"
                     required
                     placeholder="Иван Петров"
                     value={patientName}
@@ -846,13 +848,15 @@ function BookingWizardContent() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="patient-phone" className="block text-xs font-bold text-slate-700 mb-1">
                   Телефон за връзка <span className="text-purple-600">*</span>
                 </label>
                 <div className="relative">
                   <Phone className="w-4 h-4 text-purple-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="tel"
+                    id="patient-phone"
+                    autoComplete="tel"
                     required
                     placeholder="088 123 4567"
                     value={patientPhone}
@@ -866,13 +870,15 @@ function BookingWizardContent() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="patient-email" className="block text-xs font-bold text-slate-700 mb-1">
                   Имейл <span className="text-slate-400 font-normal">(по желание)</span>
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-purple-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="email"
+                    id="patient-email"
+                    autoComplete="email"
                     placeholder="ivan@example.com"
                     value={patientEmail}
                     onChange={(e) => setPatientEmail(e.target.value)}
@@ -882,12 +888,13 @@ function BookingWizardContent() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="patient-notes" className="block text-xs font-bold text-slate-700 mb-1">
                   Бележка <span className="text-slate-400 font-normal">(по желание)</span>
                 </label>
                 <div className="relative">
                   <FileText className="w-4 h-4 text-purple-400 absolute left-3 top-2.5" />
                   <textarea
+                    id="patient-notes"
                     rows={2}
                     placeholder="Опишете оплакване или симптоми..."
                     value={patientNotes}

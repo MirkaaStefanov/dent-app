@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { Service } from '@/types/database';
 import { Clock, ArrowRight } from 'lucide-react';
@@ -12,6 +12,10 @@ interface ServicesSectionProps {
 
 export default function ServicesSection({ services }: ServicesSectionProps) {
   const activeServices = services.filter((service) => service.is_active);
+
+  const [category, setCategory] = useState('Всички');
+  const categories = ['Всички', ...new Set(activeServices.map(s => s.category || 'Дентална грижа'))];
+  const visibleServices = category === 'Всички' ? activeServices : activeServices.filter(s => (s.category || 'Дентална грижа') === category);
 
   return (
     <section className="py-16 sm:py-24 bg-[#FAFAFD] border-b border-purple-50" id="services">
@@ -26,13 +30,14 @@ export default function ServicesSection({ services }: ServicesSectionProps) {
             Услуги и прозрачни цени
           </h2>
           <p className="text-base text-slate-600 leading-relaxed">
-            Всички манипулации се извършват с включена локална упойка и материали от висок клас. Без скрити такси.
+            Открийте подходящата грижа за Вашата усмивка. Цената и планът за лечение се уточняват при прегледа.
           </p>
         </div>
 
+        <div className="service-filters" aria-label="Категории услуги">{categories.map(item => <button type="button" key={item} aria-pressed={category === item} onClick={() => setCategory(item)}>{item}</button>)}</div>
         {/* Services grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {activeServices.map((service) => (
+          {visibleServices.map((service) => (
             <div
               key={service.id}
               className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-7 flex flex-col justify-between hover:border-purple-300 hover:shadow-lg hover:shadow-purple-950/5 transition-all group"
@@ -60,7 +65,7 @@ export default function ServicesSection({ services }: ServicesSectionProps) {
               <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
                 <div>
                   <span className="text-[10px] text-slate-400 uppercase font-semibold block">
-                    Цена
+                    Ориентировъчна цена
                   </span>
                   <span className="text-xl font-bold text-slate-900">
                     {service.price_bgn} €

@@ -10,7 +10,7 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-sm border-b border-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-20">
 
           {/* Logo — text only */}
           <Link href="/" className="group flex flex-col">
@@ -23,12 +23,12 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop nav */}
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden lg:flex items-center space-x-8">
             <Link href="/#services" className="text-sm text-slate-600 hover:text-purple-800 transition-colors">
               Услуги
             </Link>
             <Link href="/#about" className="text-sm text-slate-600 hover:text-purple-800 transition-colors">
-              За нас
+              За кабинета
             </Link>
             <Link href="/#contacts" className="text-sm text-slate-600 hover:text-purple-800 transition-colors">
               Контакти
@@ -36,7 +36,7 @@ export default function Navbar() {
           </nav>
 
           {/* Desktop right: phone + CTA */}
-          <div className="hidden md:flex items-center gap-5">
+          <div className="hidden lg:flex items-center gap-5">
             <a
               href="tel:+359888123456"
               className="text-sm text-slate-600 hover:text-purple-800 transition-colors flex items-center gap-1.5"
@@ -54,7 +54,7 @@ export default function Navbar() {
           </div>
 
           {/* Mobile: call + hamburger */}
-          <div className="flex items-center gap-2 md:hidden">
+          <div className="flex items-center gap-2 lg:hidden">
             <a
               href="tel:+359888123456"
               className="p-2 rounded-full text-purple-800 hover:bg-purple-50 transition-colors"
@@ -67,6 +67,8 @@ export default function Navbar() {
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="p-2 rounded-full text-slate-700 hover:bg-gray-50 transition-colors"
               aria-label="Навигационно меню"
+              aria-expanded={isMobileMenuOpen}
+              aria-controls="mobile-navigation"
             >
               {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -77,8 +79,8 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-gray-100 bg-white px-5 py-5 space-y-4">
-          <nav className="flex flex-col space-y-3">
+        <div className="lg:hidden border-t border-gray-100 bg-white px-5 py-5 space-y-4">
+          <nav id="mobile-navigation" className="flex flex-col space-y-3">
             <Link
               href="/#services"
               onClick={() => setIsMobileMenuOpen(false)}
@@ -91,7 +93,7 @@ export default function Navbar() {
               onClick={() => setIsMobileMenuOpen(false)}
               className="text-base text-slate-700 hover:text-purple-800 py-1"
             >
-              За нас
+              За кабинета
             </Link>
             <Link
               href="/#contacts"

@@ -45,7 +45,7 @@ export default function HomePage() {
   }, []);
 
   return (
-    <main className="min-h-screen pb-20 md:pb-0 bg-white text-slate-900">
+    <main className="clinic-home min-h-screen pb-20 md:pb-0 bg-white text-slate-900">
       <Navbar />
       <Hero />
       <ServicesSection services={services} />

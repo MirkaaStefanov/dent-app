@@ -38,7 +38,7 @@ export default function ContactSection({ workingHours }: ContactSectionProps) {
                 гр. Търговище
               </p>
               <p className="text-sm text-slate-500">
-                бул. „Васил Левски" №12, ет. 2, каб. 4
+                бул. „Васил Левски“ №12, ет. 2, каб. 4
               </p>
               <a
                 href="https://maps.google.com/?q=бул.+Васил+Левски+12+Търговище"

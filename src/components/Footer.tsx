@@ -27,7 +27,7 @@ export default function Footer() {
               Запазване на час
             </Link>
             <Link href="/#about" className="hover:text-white transition-colors">
-              За нас
+              За кабинета
             </Link>
             <Link href="/#contacts" className="hover:text-white transition-colors">
               Контакти
