@@ -1,5 +1,6 @@
 'use client';
 
+import AdminDayNavigator from './AdminDayNavigator';
 import PremiumSelect from '@/components/PremiumSelect';
 
 import React, { useState } from 'react';
@@ -170,6 +171,12 @@ export default function AdminHourlyCalendar({
   const viewYear = viewMonthDate.getFullYear();
   const viewMonth = viewMonthDate.getMonth();
 
+  const selectDay = (date: string) => {
+    onSelectDate(date);
+    const next = parseLocalDate(date);
+    setViewMonthDate(new Date(next.getFullYear(), next.getMonth(), 1));
+  };
+
   // Navigation handlers
   const handlePrev = () => {
     if (viewMode === 'month') {
@@ -334,7 +341,7 @@ export default function AdminHourlyCalendar({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
 
           {/* Stepper & Date Title */}
-          <div className="flex items-center justify-between sm:justify-start gap-2">
+          <div className={`${viewMode === 'day' ? 'hidden' : 'flex'} items-center justify-between sm:justify-start gap-2`}>
             <div className="inline-flex items-center gap-0.5 bg-purple-100/90 p-1 rounded-2xl border border-purple-200 shadow-2xs">
               <button
                 type="button"
@@ -429,6 +436,8 @@ export default function AdminHourlyCalendar({
           </div>
 
         </div>
+
+        {viewMode === 'day' && <AdminDayNavigator date={activeDate} onChange={selectDay} />}
 
         {/* Row 2: Search & Status Filter */}
         <div className="flex flex-col sm:flex-row items-center gap-2 pt-2.5 border-t border-purple-100">
@@ -571,8 +580,9 @@ export default function AdminHourlyCalendar({
                 return (
                   <button
                     key={`mob-${cell.dateStr}`}
+                    aria-label={`Отвори графика за ${formatBulgarianDate(cell.dateStr)}`}
                     type="button"
-                    onClick={() => onSelectDate(cell.dateStr)}
+                    onClick={() => { selectDay(cell.dateStr); setViewMode('day'); }}
                     className={`aspect-square p-1 rounded-xl border flex flex-col items-center justify-between transition-all cursor-pointer relative overflow-hidden ${
                       !cell.isCurrentMonth
                         ? 'bg-purple-50/15 text-slate-300 border-transparent opacity-20 pointer-events-none'
@@ -668,7 +678,7 @@ export default function AdminHourlyCalendar({
                 return (
                   <div
                     key={`desk-${cell.dateStr}`}
-                    onClick={() => onSelectDate(cell.dateStr)}
+                    onClick={() => { selectDay(cell.dateStr); setViewMode('day'); }}
                     className={`min-h-[118px] p-2.5 rounded-2xl border-2 transition-all flex flex-col justify-between cursor-pointer relative group overflow-hidden ${
                       !cell.isCurrentMonth
                         ? 'bg-purple-50/15 text-slate-300 border-purple-100/40 opacity-25 pointer-events-none'
@@ -702,7 +712,7 @@ export default function AdminHourlyCalendar({
                     {/* Cell Top Header: Date number & Today / Weekend / DayOff badge */}
                     <div className="flex items-center justify-between z-10 relative">
                       <div className="flex items-center gap-1.5">
-                        <span
+                        <button type="button" aria-label={`Отвори графика за ${formatBulgarianDate(cell.dateStr)}`} onClick={event => { event.stopPropagation(); selectDay(cell.dateStr); setViewMode('day'); }}
                           className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-lg ${
                             dayOff
                               ? 'bg-rose-200 text-rose-950 border border-rose-300 font-bold'
@@ -720,7 +730,7 @@ export default function AdminHourlyCalendar({
                           }`}
                         >
                           {cell.dayNum}
-                        </span>
+                        </button>
 
                         {isToday && (
                           <span className="text-[9px] font-bold text-purple-900 bg-purple-200/90 px-1.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
@@ -1213,6 +1223,7 @@ export default function AdminHourlyCalendar({
           </div>
 
           <section className={styles.availability}>
+            <div className={styles.localDayNavigation}><AdminDayNavigator date={activeDate} onChange={selectDay} /></div>
             <div className={styles.slotHeading}><div><span className="eyebrow">НОВО ПОСЕЩЕНИЕ</span><h3>Свободни часове</h3><p>За процедура с продължителност {bookingDuration} мин. · Съобразени с работното време и почивките.</p></div><span className={styles.slotCount}>{availability.slots.length} налични</span></div>
             <label className={styles.serviceSelector}><span>Процедура за новия час</span><PremiumSelect aria-label="Процедура за новия час" value={bookingServiceId} onValueChange={onBookingServiceChange}>{services.filter(service => service.is_active).map(service => <option key={service.id} value={service.id}>{service.title} · {service.duration_minutes} мин.</option>)}</PremiumSelect></label>
             {availability.slots.length === 0 ? <p className={styles.noSlots}>{availability.reason}</p> : <div className={styles.slotGroups}>{['Сутрин', 'Следобед'].map((period, index) => {

@@ -1,0 +1,21 @@
+.navigator { padding: 16px 0; background: #fff; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.title span { display: block; font-size: 9px; letter-spacing: .15em; color: #ab91b7; margin-bottom: 6px; }
+.title strong { display: block; font: 20px var(--font-serif); color: #583867; text-transform: capitalize; }
+.controls { display: flex; align-items: center; border: 1px solid #e1d4e8; border-radius: 8px; padding: 3px; }
+.controls button { min-width: 40px; min-height: 40px; display: grid; place-items: center; font-size: 12px; color: #7d548f; cursor: pointer; border-radius: 5px; padding: 0 6px; }
+.controls button:hover { background: #f3edf7; }
+.bottom { display: flex; gap: 22px; align-items: end; margin-top: 15px; }
+.week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; flex: 1; }
+.week button { padding: 9px 5px; border: 1px solid #e9e0ef; border-radius: 7px; color: #80628e; cursor: pointer; min-height: 54px; }
+.week span { display: block; font-size: 10px; margin-bottom: 4px; }
+.week strong { font-size: 13px; font-weight: 500; }
+.week button[aria-pressed="true"] { background: #6b417f; border-color: #6b417f; color: #fff; }
+.week button:hover:not([aria-pressed="true"]) { background: #faf7fc; }
+.date span { font-size: 10px; color: #967ba3; display: block; margin-bottom: 6px; }
+.date input { width: 145px; min-height: 44px; border: 1px solid #dccce5; border-radius: 7px; padding: 8px; font-size: 12px; color: #755186; }
+@media (max-width: 767px) { .title strong { font-size: 17px; } .row { gap: 10px; } .controls button { min-width: 34px; } .bottom { flex-direction: column; align-items: stretch; gap: 10px; } .date { display: flex; align-items: center; justify-content: space-between; gap: 15px; } .date span { margin: 0; } .date input { width: 170px; } .navigator { padding-top: 12px; } }
+.title { min-width: 0; flex: 1; }
+.title strong { line-height: 1.4; }
+.controls { flex-shrink: 0; }
+.week { width: 100%; }

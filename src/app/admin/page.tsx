@@ -1,10 +1,13 @@
 'use client';
 
+import ReminderSettings from '@/components/ReminderSettings';
 import PremiumSelect from '@/components/PremiumSelect';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import ClinicMark from '@/components/ClinicMark';
+import ClinicBrand from '@/components/ClinicBrand';
+import { getClinicAdmin, isDemoEnabled } from '@/lib/supabase/admin';
+import { useRouter } from 'next/navigation';
 import styles from './admin.module.css';
 import { calculateAvailableSlots } from '@/lib/availability';
 import {
@@ -49,7 +52,6 @@ import {
   Trash2,
   ExternalLink,
   LogOut,
-  Lock,
   Building,
   CalendarOff,
   Euro,
@@ -61,28 +63,12 @@ import {
 } from 'lucide-react';
 import AdminHourlyCalendar from '@/components/AdminHourlyCalendar';
 
-function ToothIcon({ className = "w-5 h-5" }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 2C8.5 2 6 4.5 6 8c0 3 1.2 5.5 2 8.5.8 3 1.5 5.5 4 5.5s3.2-2.5 4-5.5c.8-3 2-5.5 2-8.5 0-3.5-2.5-6-6-6z" />
-      <path d="M9.5 9c.8-.8 1.6-1.2 2.5-1.2s1.7.4 2.5 1.2" />
-    </svg>
-  );
-}
-
 function loadAdminData() {
   return Promise.all([getAppointments(), getServices(), getWorkingHours(), getDaysOff(), getClinicSettings()]);
 }
 
 export default function AdminPage() {
+  const router = useRouter();
   // Автентикация
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [adminUser, setAdminUser] = useState<{ email: string; name: string } | null>(null);
@@ -114,6 +100,7 @@ export default function AdminPage() {
   const [manualServiceId, setManualServiceId] = useState('');
   const [manualDate, setManualDate] = useState(new Date().toISOString().split('T')[0]);
   const [manualTime, setManualTime] = useState('10:00');
+  const [manualNotificationConsent, setManualNotificationConsent] = useState(false);
   const [manualNotes, setManualNotes] = useState('');
   const [manualSubmitting, setManualSubmitting] = useState(false);
 
@@ -138,30 +125,26 @@ export default function AdminPage() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // Проверка за автентикация (Supabase или демо сесия)
   useEffect(() => {
-    async function checkAuth() {
-      if (typeof window !== 'undefined') {
-        const demoAuth = localStorage.getItem('dent_admin_authenticated');
-        if (demoAuth === 'true') {
-          setIsAuthenticated(true);
-          setAdminUser({ email: 'dr.ayaz.dent@gmail.com', name: 'Д-р Джанел Аяз' });
-        }
+    let active = true;
+    const checkAuth = async () => {
+      if (isDemoEnabled && localStorage.getItem('dent_admin_authenticated') === 'true') {
+        if (active) { setIsAuthenticated(true); setAdminUser({ email: '', name: 'Демо график' }); }
+        return;
       }
-
-      if (isSupabaseConfigured && supabase) {
-        const { data } = await supabase.auth.getSession();
-        if (data.session) {
-          setIsAuthenticated(true);
-          setAdminUser({
-            email: data.session.user.email || 'dr.ayaz.dent@gmail.com',
-            name: data.session.user.user_metadata?.full_name || 'Д-р Джанел Аяз',
-          });
-        }
+      const admin = await getClinicAdmin();
+      if (!active) return;
+      if (admin) { setIsAuthenticated(true); setAdminUser(admin); }
+      else {
+        setIsAuthenticated(false); setAdminUser(null);
+        const { data } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
+        if (active) router.replace(data.session ? '/admin/login?reason=access' : '/admin/login');
       }
-    }
-    checkAuth();
-  }, []);
+    };
+    void checkAuth();
+    const subscription = supabase?.auth.onAuthStateChange(() => { setTimeout(() => { if (active) void checkAuth(); }, 0); });
+    return () => { active = false; subscription?.data.subscription.unsubscribe(); };
+  }, [router]);
 
   const applyAdminData = useCallback(([apts, srvs, hrs, doff, setts]: Awaited<ReturnType<typeof loadAdminData>>) => {
     setAppointments(apts);
@@ -235,33 +218,6 @@ export default function AdminPage() {
     return () => { document.removeEventListener('keydown', trapFocus); previousFocus?.focus(); };
   }, [isManualBookingOpen]);
 
-  // Google Вход
-  const handleGoogleLogin = async () => {
-    if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/admin` : undefined,
-        },
-      });
-      if (error) {
-        alert(`Грешка при Google вход: ${error.message}. Влизане в демо режим.`);
-        handleDemoLogin();
-      }
-    } else {
-      handleDemoLogin();
-    }
-  };
-
-  const handleDemoLogin = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('dent_admin_authenticated', 'true');
-    }
-    setIsAuthenticated(true);
-    setAdminUser({ email: 'dr.ayaz.dent@gmail.com', name: 'Д-р Джанел Аяз' });
-    showToast('Добре дошли в админ панела, Д-р Аяз!');
-  };
-
   const handleLogout = async () => {
     if (isSupabaseConfigured && supabase) {
       await supabase.auth.signOut();
@@ -271,6 +227,7 @@ export default function AdminPage() {
     }
     setIsAuthenticated(false);
     setAdminUser(null);
+    router.replace('/admin/login');
   };
 
   // Промяна на статус на час (мигновена реакция)
@@ -348,6 +305,7 @@ export default function AdminPage() {
         start_time: manualTime,
         end_time: endTimeStr,
         status: 'confirmed',
+        notification_consent: manualNotificationConsent,
         notes: manualNotes.trim() ? `[Записан от лекарката] ${manualNotes.trim()}` : '[Записан от лекарката по телефона]',
         booked_by: 'admin',
       });
@@ -358,10 +316,11 @@ export default function AdminPage() {
       setManualPhone('');
       setManualEmail('');
       setManualNotes('');
+      setManualNotificationConsent(false);
       showToast(`Успешно записан час за ${newApt.patient_name} на ${formatBulgarianDate(manualDate)} от ${manualTime} ч.!`);
     } catch (err) {
       console.error(err);
-      alert('Възникна грешка при запазване на часа.');
+      showToast(err instanceof Error ? err.message : 'Възникна грешка при запазване на часа.');
     } finally {
       setManualSubmitting(false);
     }
@@ -501,70 +460,7 @@ export default function AdminPage() {
   // ==========================================
   // АКО ПОТРЕБИТЕЛЯТ НЕ Е ЛОГНАТ -> ЕКРАН ЗА ВХОД
   // ==========================================
-  if (!isAuthenticated) {
-    return (
-      <main className={styles.login}>
-        <div className={styles.loginStory}><span className="eyebrow">Д-Р ДЖАНЕЛ АЯЗ · ДЕНТАЛНА ПРАКТИКА</span><ClinicMark /><h2>Повече време<br />за Вашите<br /><em>пациенти.</em></h2><p>График, услуги и организация на кабинета на едно място.</p><Link href="/">← Към уебсайта</Link></div>
-
-        <div className={styles.loginCard}>
-
-          <div className="w-12 h-12 rounded-xl bg-purple-800 text-white flex items-center justify-center mx-auto mb-5">
-            <ClinicMark className="w-7 h-8" />
-          </div>
-
-          <h1 className="text-xl font-bold text-slate-900">
-            Д-р Джанел Аяз
-          </h1>
-          <p className="text-sm text-slate-500 mt-1 mb-8">
-            Добре дошли в лекарския панел
-          </p>
-
-          <div className="space-y-3">
-            <button
-              type="button"
-              onClick={handleDemoLogin}
-              className="w-full py-3 px-4 rounded-xl bg-purple-800 hover:bg-purple-900 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Lock className="w-4 h-4" />
-              <span>Влез в графика</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              className="w-full py-3 px-4 rounded-xl border border-gray-200 hover:border-purple-300 bg-white text-slate-700 font-medium text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.25 21.36 7.33 24 12 24z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.26C.46 8.16 0 9.97 0 12s.46 3.84 1.26 5.42l4.02-3.15z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.25 2.64 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-                />
-              </svg>
-              <span>Вход с Google</span>
-            </button>
-          </div>
-
-          <div className="mt-8 pt-5 border-t border-gray-100 text-xs text-slate-400">
-            <Link href="/" className="text-purple-700 hover:text-purple-900 font-medium">
-              ← Към уебсайта
-            </Link>
-          </div>
-        </div>
-      </main>
-    );
-  }
+  if (!isAuthenticated) return <main className="min-h-screen grid place-items-center bg-purple-50"><p role="status" className="text-sm text-purple-700">Проверяваме достъпа до кабинета…</p></main>;
 
   // ==========================================
   // ОСНОВЕН ИЗГЛЕД НА АДМИН ПАНЕЛА
@@ -587,17 +483,7 @@ export default function AdminPage() {
 
             {/* Brand */}
             <div className={`${styles.headerBrand} flex items-center gap-3`}>
-              <div className="w-9 h-9 rounded-lg bg-purple-800 flex items-center justify-center text-white">
-                <ToothIcon className="w-4.5 h-4.5" />
-              </div>
-              <div>
-                <span className="block text-sm font-bold text-slate-900 leading-tight">
-                  {adminUser?.name || 'Д-р Джанел Аяз'}
-                </span>
-                <span className="block text-xs text-slate-500">
-                  Лекарски панел
-                </span>
-              </div>
+              <ClinicBrand subtitle="Лекарски панел" />
             </div>
 
             {/* Quick Actions & Logout with Clear Visual Priority */}
@@ -651,7 +537,7 @@ export default function AdminPage() {
                 onClick={handleLogout}
                 className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-rose-600 hover:bg-rose-50/70 transition-colors cursor-pointer"
                 aria-label="Изход от системата"
-                title="Изход от системата"
+                title={`Изход от системата · ${adminUser?.email || 'Демо'}`}
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Изход</span>
@@ -1309,12 +1195,14 @@ export default function AdminPage() {
                 </div>
               </div>
 
+              <ReminderSettings />
+
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Време за напомняне преди часа (в часове)
                 </label>
                 <input
-                  type="number"
+                  type="number" min={1} max={168}
                   value={settings.reminder_hours_before}
                   onChange={(e) =>
                     setSettings({ ...settings, reminder_hours_before: Number(e.target.value) })
@@ -1322,7 +1210,7 @@ export default function AdminPage() {
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm bg-white font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                 />
                 <span className="text-[11px] text-slate-400 mt-1 block">
-                  Автоматично изпращане не е свързано. Тази стойност се запазва само като настройка за бъдеща интеграция; напомнянията засега се изпращат ръчно чрез SMS/Viber.
+                  Напомнянето се изпраща в този период преди часа, когато автоматизацията е активна. Препоръчително: 24 часа.
                 </span>
               </div>
 
@@ -1330,8 +1218,10 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={async () => {
-                    await updateClinicSettings(settings);
-                    showToast('Настройките бяха запазени успешно!');
+                    try {
+                      await updateClinicSettings(settings);
+                      showToast('Настройките бяха запазени успешно!');
+                    } catch (error) { showToast(error instanceof Error ? error.message : 'Настройките не бяха записани.'); }
                   }}
                   className="px-6 py-3 rounded-xl bg-purple-800 hover:bg-purple-900 text-white font-bold text-xs transition-all shadow-md shadow-purple-900/15 cursor-pointer"
                 >
@@ -1464,6 +1354,11 @@ export default function AdminPage() {
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                 />
               </div>
+
+              <label className="flex items-start gap-3 text-xs text-slate-500 leading-relaxed">
+                <input type="checkbox" checked={manualNotificationConsent} onChange={event => setManualNotificationConsent(event.target.checked)} className="mt-1 accent-purple-700" />
+                Пациентът желае да получи напомняне за часа по SMS и имейл, ако е предоставен.
+              </label>
 
               <div className="pt-2 flex items-center justify-end gap-3">
                 <button
@@ -1614,6 +1509,8 @@ export default function AdminPage() {
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 bg-slate-50/60">
+
+
               <div className="flex items-center gap-3">
                 {activeKpiModal === 'today' && (
                   <div className="w-10 h-10 rounded-xl bg-purple-100/90 text-purple-700 flex items-center justify-center border border-purple-200 shrink-0">

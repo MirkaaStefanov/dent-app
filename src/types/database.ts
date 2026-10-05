@@ -50,6 +50,7 @@ export type Appointment = {
   notes?: string;
   booked_by: 'patient' | 'admin';
   reminder_sent: boolean;
+  notification_consent?: boolean;
   created_at: string;
 };
 

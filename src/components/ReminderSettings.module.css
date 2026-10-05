@@ -1,0 +1,15 @@
+.panel { border: 1px solid #e4d7eb; background: #fcf9fe; border-radius: 10px; padding: 24px; margin: 25px 0; }
+.heading { display: flex; align-items: center; gap: 12px; color: #815194; }
+.heading h3 { font: 22px var(--font-serif); color: #583765; }
+.heading button { margin-left: auto; display: grid; place-items: center; min-width: 40px; min-height: 40px; cursor: pointer; }
+.heading button:disabled { opacity: .4; cursor: wait; }
+.panel p { color: #95839f; font-size: 12px; line-height: 1.8; }
+.panel .status { margin: 10px 0 18px; color: #7f5b90; }
+.channels { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+.channels > span { border: 1px solid #e7dced; background: white; border-radius: 7px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px; font-size: 13px; color: #785489; }
+.channels small { margin-left: auto; font-size: 10px; color: #a38bae; }
+.results { display: flex; gap: 25px; flex-wrap: wrap; margin-top: 18px; padding-top: 18px; border-top: 1px solid #e7dced; font-size: 11px; color: #93809c; }
+.results strong { display: block; font-size: 23px; font-weight: 500; color: #79518b; margin-bottom: 5px; }
+.results small { width: 100%; font-size: 10px; line-height: 1.6; }
+.panel .note { margin-top: 15px; color: #79518b; }
+@media (max-width: 767px) { .panel { padding: 20px 16px; } .channels { grid-template-columns: 1fr; } .heading h3 { font-size: 20px; } }

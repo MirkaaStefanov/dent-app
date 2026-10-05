@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import ClinicMark from './ClinicMark';
+import ClinicBrand from './ClinicBrand';
 import { Menu, X, Phone, Calendar } from 'lucide-react';
 
 export default function Navbar() {
@@ -14,17 +14,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-20">
 
           {/* Logo — text only */}
-          <Link href="/" className="group flex items-center gap-3">
-            <span className="brand-mark"><ClinicMark /></span>
-            <span className="flex flex-col">
-            <span className="font-serif text-lg sm:text-xl font-bold tracking-tight text-slate-900 group-hover:text-purple-800 transition-colors leading-tight">
-              Д-р Джанел Аяз
-            </span>
-            <span className="text-[11px] text-slate-400 tracking-wide">
-              Стоматолог · Търговище
-            </span>
-            </span>
-          </Link>
+          <ClinicBrand />
 
           {/* Desktop nav */}
           <nav className="hidden lg:flex items-center space-x-8">

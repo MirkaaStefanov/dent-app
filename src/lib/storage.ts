@@ -122,10 +122,14 @@ export async function getClinicSettings(): Promise<ClinicSettings> {
 export async function updateClinicSettings(settings: Partial<ClinicSettings>): Promise<ClinicSettings> {
   const current = getLocalItem<ClinicSettings>(STORAGE_KEYS.SETTINGS, initialClinicSettings);
   const updated = { ...current, ...settings };
+  if (!Number.isFinite(updated.reminder_hours_before) || updated.reminder_hours_before < 1 || updated.reminder_hours_before > 168) {
+    throw new Error('Времето за напомняне трябва да е между 1 и 168 часа.');
+  }
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('clinic_settings').upsert(updated).abortSignal(AbortSignal.timeout(10000));
+    if (error) throw new Error('Настройките не бяха записани в кабинета. Проверете връзката и опитайте отново.');
+  }
   setLocalItem(STORAGE_KEYS.SETTINGS, updated, true);
-
-  // Синхронизация на заден план
-  runWithTimeout(() => supabase!.from('clinic_settings').upsert(updated)).catch(() => {});
   return updated;
 }
 
@@ -350,54 +354,27 @@ export async function addAppointment(
   appointmentData: Omit<Appointment, 'id' | 'created_at' | 'reminder_sent'>
 ): Promise<Appointment> {
   const createdApt: Appointment = {
-    ...appointmentData,
-    id: `apt-${Date.now()}`,
-    reminder_sent: false,
+    ...appointmentData, id: crypto.randomUUID(), reminder_sent: false,
     created_at: new Date().toISOString(),
   };
-
-  const current = getLocalItem<Appointment[]>(STORAGE_KEYS.APPOINTMENTS, initialAppointments);
-  const updated = [createdApt, ...current.filter((a) => a.id !== createdApt.id)];
-  setLocalItem(STORAGE_KEYS.APPOINTMENTS, updated, true);
-
-  // Опит за запис в Supabase на заден план (не блокира потвърждението на пациента)
-  runWithTimeout(async () => {
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      appointmentData.service_id
-    );
-
-    const basePayload: Record<string, string | number | boolean | null | undefined> = {
-      patient_name: appointmentData.patient_name,
-      patient_phone: appointmentData.patient_phone,
+  if (isSupabaseConfigured && supabase) {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(appointmentData.service_id)) {
+      throw new Error('Услугите не са заредени от кабинета. Обновете страницата или се обадете по телефона.');
+    }
+    const { error } = await supabase.from('appointments').insert({
+      id: createdApt.id, service_id: appointmentData.service_id,
+      patient_name: appointmentData.patient_name, patient_phone: appointmentData.patient_phone,
       patient_email: appointmentData.patient_email || null,
-      date: appointmentData.date,
-      start_time: appointmentData.start_time,
-      end_time: appointmentData.end_time,
-      status: appointmentData.status || 'confirmed',
-      notes: appointmentData.notes || null,
-      booked_by: appointmentData.booked_by || 'patient',
-      reminder_sent: false,
-    };
-    if (isUUID) {
-      basePayload.service_id = appointmentData.service_id;
-    }
-
-    const fullPayload: Record<string, string | number | boolean | null | undefined> = {
-      ...basePayload,
-      service_title: appointmentData.service_title,
-      service_duration: appointmentData.service_duration,
-      service_price: appointmentData.service_price,
-    };
-
-    let insertRes = await supabase!.from('appointments').insert(fullPayload).select().maybeSingle();
-    if (insertRes.error && insertRes.error.code === 'PGRST204') {
-      insertRes = await supabase!.from('appointments').insert(basePayload).select().maybeSingle();
-    }
-    if (insertRes.error && insertRes.error.code === '42501') {
-      await supabase!.from('appointments').insert(basePayload);
-    }
-  }).catch(() => {});
-
+      date: appointmentData.date, start_time: appointmentData.start_time, end_time: appointmentData.end_time,
+      status: appointmentData.status || 'confirmed', notes: appointmentData.notes || null,
+      booked_by: appointmentData.booked_by || 'patient', reminder_sent: false,
+      notification_consent: appointmentData.notification_consent === true,
+    }).abortSignal(AbortSignal.timeout(10000));
+    if (error) throw new Error('Не успяхме да потвърдим записването в кабинета. Проверете връзката или се обадете по телефона.');
+  }
+  // A production confirmation is only shown after the database accepts the booking.
+  const current = getLocalItem<Appointment[]>(STORAGE_KEYS.APPOINTMENTS, initialAppointments);
+  setLocalItem(STORAGE_KEYS.APPOINTMENTS, [createdApt, ...current.filter(a => a.id !== createdApt.id)], true);
   return createdApt;
 }
 
@@ -438,15 +415,26 @@ export async function sendAppointmentReminder(id: string): Promise<{ success: bo
 // ==========================================
 // 6. АЛГОРИТЪМ ЗА ИЗЧИСЛЯВАНЕ НА СВОБОДНИ ЧАСОВЕ
 // ==========================================
+async function getBookedIntervals(date: string): Promise<Pick<Appointment, 'date' | 'start_time' | 'end_time' | 'status'>[]> {
+  if (!isSupabaseConfigured || !supabase) return getAppointments();
+  const { data, error } = await supabase.rpc('get_booked_slots_for_date', { p_date: date }).abortSignal(AbortSignal.timeout(5000));
+  if (error || !Array.isArray(data)) throw new Error('Графикът не може да бъде проверен. Обновете страницата или се обадете в кабинета.');
+  return (data as { start_time: string; end_time: string }[]).map(item => ({ date, start_time: item.start_time.slice(0, 5), end_time: item.end_time.slice(0, 5), status: 'confirmed' as const }));
+}
+
 export async function getAvailableSlots(
   dateStr: string,
   durationMinutes: number
 ): Promise<{ slots: string[]; reason?: string }> {
-  const [daysOff, workingHours, appointments, settings] = await Promise.all([
-    getDaysOff(), getWorkingHours(), getAppointments(), getClinicSettings(),
-  ]);
-  return calculateAvailableSlots({ date: dateStr, duration: durationMinutes, workingHours,
-    daysOff, appointments, interval: settings.slot_interval_minutes });
+  try {
+    const [daysOff, workingHours, appointments, settings] = await Promise.all([
+      getDaysOff(), getWorkingHours(), getBookedIntervals(dateStr), getClinicSettings(),
+    ]);
+    return calculateAvailableSlots({ date: dateStr, duration: durationMinutes, workingHours,
+      daysOff, appointments, interval: settings.slot_interval_minutes });
+  } catch {
+    return { slots: [], reason: 'Графикът не може да бъде проверен. Обновете страницата или се обадете в кабинета.' };
+  }
 }
 
 // ==========================================

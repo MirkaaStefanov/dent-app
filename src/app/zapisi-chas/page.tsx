@@ -79,6 +79,7 @@ function BookingWizardContent() {
   // Form inputs
   const [patientName, setPatientName] = useState('');
   const [patientPhone, setPatientPhone] = useState('');
+  const [notificationConsent, setNotificationConsent] = useState(false);
   const [patientEmail, setPatientEmail] = useState('');
   const [patientNotes, setPatientNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -216,6 +217,7 @@ function BookingWizardContent() {
         patient_name: patientName.trim(),
         patient_phone: patientPhone.trim(),
         patient_email: patientEmail.trim() || undefined,
+        notification_consent: notificationConsent,
         date: selectedDate,
         start_time: selectedSlot,
         end_time: endTimeStr,
@@ -227,7 +229,7 @@ function BookingWizardContent() {
       setBookedAppointment(newApt);
     } catch (err) {
       console.error('Error booking:', err);
-      alert('Възникна грешка при запазването. Моля, позвънете на 088 812 3456.');
+      alert(err instanceof Error ? err.message : 'Възникна грешка при запазването. Моля, позвънете на 088 812 3456.');
     } finally {
       setIsSubmitting(false);
     }
@@ -621,6 +623,11 @@ function BookingWizardContent() {
                 </div>
               )}
             </div>
+
+            <label className="flex items-start gap-3 text-xs text-slate-500 leading-relaxed py-4">
+              <input type="checkbox" checked={notificationConsent} onChange={event => setNotificationConsent(event.target.checked)} className="mt-1 accent-purple-700" />
+              Желая напомняне за часа по SMS и имейл, ако съм предоставил адрес. Данните се използват само за организацията на посещението.
+            </label>
 
             <div className="pt-4 border-t border-purple-50 flex items-center justify-between gap-3">
               <button

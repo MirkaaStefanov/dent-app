@@ -24,7 +24,7 @@ export function calculateAvailableSlots({
   interval = 15, now = new Date(),
 }: {
   date: string; duration: number; workingHours: WorkingHour[]; daysOff: DayOff[];
-  appointments: Appointment[]; interval?: number; now?: Date;
+  appointments: Pick<Appointment, 'date' | 'start_time' | 'end_time' | 'status'>[]; interval?: number; now?: Date;
 }): { slots: string[]; reason?: string } {
   const dateObj = parseLocalDate(dateStr);
   const dayOfWeek = dateObj.getDay() as DayOfWeek;
