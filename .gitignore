@@ -43,3 +43,5 @@ next-env.d.ts
 
 # Supabase CLI local state
 /supabase/.temp/
+# Development cache is separate from production builds.
+/.next-dev/
