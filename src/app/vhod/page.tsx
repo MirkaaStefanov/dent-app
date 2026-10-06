@@ -1,20 +1,33 @@
 'use client';
 
-import { FormEvent, Suspense, useState } from 'react';
+import { FormEvent, Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft, CalendarDays, CheckCircle2, Mail, ShieldCheck } from 'lucide-react';
 import ClinicBrand from '@/components/ClinicBrand';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase/client';
 import styles from './patient-auth.module.css';
 
 function PatientLogin() {
-  const searchParams = useSearchParams();
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const destination = searchParams.get('next') || '/moite-rezervacii/';
+  const destination = '/moite-rezervacii/';
+  const [checkingSession, setCheckingSession] = useState(true);
+  useEffect(() => {
+    let active = true;
+    void supabase?.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      if (data.session) router.replace('/moite-rezervacii/');
+      else setCheckingSession(false);
+    });
+    const subscription = supabase?.auth.onAuthStateChange((_event, session) => {
+      if (session) router.replace('/moite-rezervacii/');
+    }).data.subscription;
+    return () => { active = false; subscription?.unsubscribe(); };
+  }, [router]);
 
   async function sendMagicLink(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -58,6 +71,7 @@ function PatientLogin() {
     }
   }
 
+  if (checkingSession && supabase) return <main className={styles.page}><p className="p-12 text-center text-purple-800">Отваряме профила Ви…</p></main>;
   return (
     <main className={styles.page}>
       <div className={styles.shell}>

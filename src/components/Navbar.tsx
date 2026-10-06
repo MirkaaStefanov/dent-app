@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import ClinicBrand from './ClinicBrand';
-import { Menu, X, Phone, Calendar, UserRound } from 'lucide-react';
+import { Menu, X, Phone, Calendar } from 'lucide-react';
+import PatientAccountLink from './PatientAccountLink';
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -48,16 +49,15 @@ export default function Navbar() {
               <Calendar className="w-3.5 h-3.5" />
               <span>Запазете час</span>
             </Link>
-            <Link href="/vhod" aria-label="Вход за пациенти" className="p-2 rounded-full border border-purple-100 text-purple-800 hover:bg-purple-50 transition-colors">
-              <UserRound className="w-4 h-4" />
-            </Link>
+            <PatientAccountLink />
           </div>
 
           {/* Mobile: call + hamburger */}
           <div className="flex items-center gap-2 lg:hidden">
+            <PatientAccountLink />
             <a
               href="tel:+359888123456"
-              className="p-2 rounded-full text-purple-800 hover:bg-purple-50 transition-colors"
+              className="hidden sm:inline-flex p-2 rounded-full text-purple-800 hover:bg-purple-50 transition-colors"
               aria-label="Обаждане по телефон"
             >
               <Phone className="w-5 h-5" />

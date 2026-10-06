@@ -20,12 +20,12 @@ import {
   Check, 
   MapPin,
   ChevronLeft,
-  CalendarPlus,
-  Download,
   UserRound
 } from 'lucide-react';
 import InteractiveCalendar from '@/components/InteractiveCalendar';
 import { supabase } from '@/lib/supabase/client';
+import { getPatientContact } from '@/lib/supabase/patient';
+import CalendarProviderIcon from '@/components/CalendarProviderIcon';
 
 type StepNumber = 1 | 2 | 3;
 
@@ -127,6 +127,14 @@ function BookingWizardContent() {
 
   useEffect(() => {
     void supabase?.auth.getUser().then(({ data }) => setHasPatientProfile(Boolean(data.user)));
+    let active = true;
+    void getPatientContact().then(contact => {
+      if (!active || !contact) return;
+      setPatientName(value => value || contact.name);
+      setPatientPhone(value => value || contact.phone);
+      setPatientEmail(value => value || contact.email);
+    });
+    return () => { active = false; };
   }, []);
 
   // Load slots when date or service changes
@@ -329,7 +337,7 @@ function BookingWizardContent() {
               rel="noopener noreferrer"
               className="w-full sm:w-1/2 inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-purple-200 hover:border-purple-300 bg-white text-purple-900 font-bold text-xs sm:text-sm transition-colors"
             >
-              <CalendarPlus className="w-4 h-4 text-purple-700" />
+              <CalendarProviderIcon provider="google" />
               <span>Добави в Google Calendar</span>
             </a>
             <button
@@ -337,7 +345,7 @@ function BookingWizardContent() {
               onClick={() => downloadIcs(bookedAppointment)}
               className="w-full sm:w-1/2 inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-purple-200 hover:border-purple-300 bg-white text-purple-900 font-bold text-xs sm:text-sm transition-colors"
             >
-              <Download className="w-4 h-4 text-purple-700" />
+              <CalendarProviderIcon provider="apple" />
               <span>Свали за Apple / Outlook</span>
             </button>
           </div>
@@ -346,7 +354,7 @@ function BookingWizardContent() {
             <div className="rounded-2xl border border-purple-100 bg-gradient-to-br from-white to-purple-50/70 p-5 text-left flex items-start gap-3">
               <div className="w-9 h-9 rounded-full bg-purple-100 text-purple-800 grid place-items-center shrink-0"><UserRound className="w-4 h-4" /></div>
               <div className="min-w-0">
-                <strong className="block text-sm text-slate-900">{hasPatientProfile ? 'Часът е добавен към профила Ви' : 'Искате ли да виждате часовете си на едно място?'}</strong>
+                <strong className="block text-sm text-slate-900">{hasPatientProfile ? 'Прегледайте часовете в профила си' : 'Искате ли да виждате часовете си на едно място?'}</strong>
                 <p className="text-xs text-slate-600 mt-1 leading-relaxed">{hasPatientProfile ? 'Можете да го прегледате заедно с останалите си посещения.' : 'Създайте профил с този имейл. Резервацията ще се свърже след потвърждението му.'}</p>
                 <Link href={hasPatientProfile ? '/moite-rezervacii/' : '/vhod?next=/moite-rezervacii/'} className="inline-flex mt-2.5 text-xs font-extrabold text-purple-800 hover:text-purple-950">
                   {hasPatientProfile ? 'Виж моите резервации →' : 'Създай профил по желание →'}

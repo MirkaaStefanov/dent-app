@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { CalendarDays, Clock3, LogOut, MapPin, Plus, ShieldCheck } from 'lucide-react';
 import ClinicBrand from '@/components/ClinicBrand';
+import PatientContactForm from '@/components/PatientContactForm';
 import { getMyAppointments } from '@/lib/storage';
 import { formatBulgarianDate } from '@/lib/notifications';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase/client';
@@ -59,8 +60,9 @@ export default function MyBookingsPage() {
       }
     }
     void load();
-    const { data: listener } = supabase?.auth.onAuthStateChange(() => void load()) || { data: null };
-    return () => { active = false; listener?.subscription.unsubscribe(); };
+    let reloadTimer: ReturnType<typeof setTimeout>;
+    const { data: listener } = supabase?.auth.onAuthStateChange(() => { clearTimeout(reloadTimer); reloadTimer = setTimeout(() => void load(), 0); }) || { data: null };
+    return () => { active = false; clearTimeout(reloadTimer); listener?.subscription.unsubscribe(); };
   }, []);
 
   const grouped = useMemo(() => ({
@@ -105,6 +107,7 @@ export default function MyBookingsPage() {
           <div className={styles.state}><h2>Не успяхме да заредим часовете</h2><p>{error}</p><button type="button" onClick={() => window.location.reload()} className={styles.primary}>Опитайте отново</button></div>
         ) : (
           <>
+            <PatientContactForm />
             <div className={styles.tabs} role="tablist" aria-label="Вид резервации">
               <button type="button" role="tab" aria-selected={tab === 'upcoming'} onClick={() => setTab('upcoming')}>Предстоящи <span>{grouped.upcoming.length}</span></button>
               <button type="button" role="tab" aria-selected={tab === 'past'} onClick={() => setTab('past')}>Минали <span>{grouped.past.length}</span></button>
