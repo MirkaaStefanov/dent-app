@@ -350,6 +350,41 @@ export async function getAppointments(): Promise<Appointment[]> {
   return local;
 }
 
+export async function getMyAppointments(): Promise<Appointment[]> {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error('Онлайн профилът временно не е достъпен.');
+  }
+
+  const { data: userResult, error: userError } = await supabase.auth.getUser();
+  if (userError || !userResult.user) {
+    throw new Error('Влезте в профила си, за да видите часовете си.');
+  }
+
+  const { data, error } = await supabase
+    .from('appointments')
+    .select('*, services(title, duration_minutes, price_bgn)')
+    .eq('patient_user_id', userResult.user.id)
+    .order('date', { ascending: false })
+    .order('start_time', { ascending: false });
+
+  if (error) {
+    throw new Error('Резервациите не могат да бъдат заредени в момента.');
+  }
+
+  return (data || []).map((row) => {
+    const service = Array.isArray(row.services) ? row.services[0] : row.services;
+    return {
+      ...row,
+      services: undefined,
+      start_time: String(row.start_time).slice(0, 5),
+      end_time: String(row.end_time).slice(0, 5),
+      service_title: service?.title || 'Стоматологична процедура',
+      service_duration: service?.duration_minutes || 30,
+      service_price: service?.price_bgn || 0,
+    } as Appointment;
+  });
+}
+
 export async function addAppointment(
   appointmentData: Omit<Appointment, 'id' | 'created_at' | 'reminder_sent'>
 ): Promise<Appointment> {

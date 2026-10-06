@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import ClinicBrand from './ClinicBrand';
-import { Menu, X, Phone, Calendar } from 'lucide-react';
+import { Menu, X, Phone, Calendar, UserRound } from 'lucide-react';
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -27,6 +27,9 @@ export default function Navbar() {
             <Link href="/#contacts" className="text-sm text-slate-600 hover:text-purple-800 transition-colors">
               Контакти
             </Link>
+            <Link href="/moite-rezervacii" className="text-sm text-slate-600 hover:text-purple-800 transition-colors">
+              Моите часове
+            </Link>
           </nav>
 
           {/* Desktop right: phone + CTA */}
@@ -44,6 +47,9 @@ export default function Navbar() {
             >
               <Calendar className="w-3.5 h-3.5" />
               <span>Запазете час</span>
+            </Link>
+            <Link href="/vhod" aria-label="Вход за пациенти" className="p-2 rounded-full border border-purple-100 text-purple-800 hover:bg-purple-50 transition-colors">
+              <UserRound className="w-4 h-4" />
             </Link>
           </div>
 
@@ -95,6 +101,13 @@ export default function Navbar() {
               className="text-base text-slate-700 hover:text-purple-800 py-1"
             >
               Контакти
+            </Link>
+            <Link
+              href="/moite-rezervacii"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="text-base text-slate-700 hover:text-purple-800 py-1"
+            >
+              Моите часове
             </Link>
           </nav>
 

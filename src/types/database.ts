@@ -37,6 +37,7 @@ export type AppointmentStatus = 'confirmed' | 'cancelled' | 'completed' | 'no_sh
 export type Appointment = {
   id: string;
   service_id: string;
+  patient_user_id?: string | null;
   service_title?: string;
   service_duration?: number;
   service_price?: number;

@@ -51,6 +51,7 @@ create table if not exists public.days_off (
 create table if not exists public.appointments (
   id uuid primary key default gen_random_uuid(),
   service_id uuid references public.services(id) on delete set null,
+  patient_user_id uuid references auth.users(id) on delete set null,
   patient_name text not null,
   patient_phone text not null,
   patient_email text,
@@ -109,8 +110,8 @@ create policy "Public can read clinic settings"
 
 -- Часове: Пациентите могат да записват час (INSERT)
 create policy "Public can create appointments"
-  on public.appointments for insert
-  with check (true);
+  on public.appointments for insert to anon, authenticated
+  with check (patient_user_id is null);
 
 -- Часове: Само логнати администратори могат да виждат личните данни на всички пациенти
 create policy "Admins can view all appointments"

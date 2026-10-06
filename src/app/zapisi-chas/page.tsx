@@ -21,9 +21,11 @@ import {
   MapPin,
   ChevronLeft,
   CalendarPlus,
-  Download
+  Download,
+  UserRound
 } from 'lucide-react';
 import InteractiveCalendar from '@/components/InteractiveCalendar';
+import { supabase } from '@/lib/supabase/client';
 
 type StepNumber = 1 | 2 | 3;
 
@@ -37,11 +39,13 @@ function downloadIcs(apt: Appointment) {
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',
+    `UID:${apt.id}@dr-ayaz-dental.bg`,
+    `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')}`,
     `SUMMARY:Стоматолог - ${apt.service_title}`,
     `DESCRIPTION:Час за стоматолог при Д-р Джанел Аяз. Адрес: гр. Търговище, бул. Васил Левски 12, каб. 4. Телефон: 088 812 3456.`,
     `LOCATION:бул. Васил Левски 12, каб. 4, гр. Търговище`,
-    `DTSTART:${startClean}`,
-    `DTEND:${endClean}`,
+    `DTSTART;TZID=Europe/Sofia:${startClean}`,
+    `DTEND;TZID=Europe/Sofia:${endClean}`,
     'STATUS:CONFIRMED',
     'END:VEVENT',
     'END:VCALENDAR',
@@ -86,6 +90,7 @@ function BookingWizardContent() {
 
   // Booked appointment
   const [bookedAppointment, setBookedAppointment] = useState<Appointment | null>(null);
+  const [hasPatientProfile, setHasPatientProfile] = useState(false);
 
   // Load services and days off
   useEffect(() => {
@@ -119,6 +124,10 @@ function BookingWizardContent() {
     }
     load();
   }, [preselectedServiceId, todayStr]);
+
+  useEffect(() => {
+    void supabase?.auth.getUser().then(({ data }) => setHasPatientProfile(Boolean(data.user)));
+  }, []);
 
   // Load slots when date or service changes
   useEffect(() => {
@@ -228,6 +237,7 @@ function BookingWizardContent() {
       });
 
       setBookedAppointment(newApt);
+      if (newApt.patient_email) sessionStorage.setItem('dent_patient_email', newApt.patient_email);
     } catch (err) {
       console.error('Error booking:', err);
       alert(err instanceof Error ? err.message : 'Възникна грешка при запазването. Моля, позвънете на 088 812 3456.');
@@ -256,7 +266,7 @@ function BookingWizardContent() {
       `Стоматологичен кабинет на Д-р Джанел Аяз, гр. Търговище, бул. Васил Левски 12, каб. 4. Тел: 088 812 3456`
     )}&location=${encodeURIComponent(
       `бул. Васил Левски 12, каб. 4, гр. Търговище`
-    )}`;
+    )}&ctz=Europe%2FSofia`;
 
     return (
       <div className="max-w-xl mx-auto py-10 sm:py-16">
@@ -331,6 +341,19 @@ function BookingWizardContent() {
               <span>Свали за Apple / Outlook</span>
             </button>
           </div>
+
+          {bookedAppointment.patient_email && (
+            <div className="rounded-2xl border border-purple-100 bg-gradient-to-br from-white to-purple-50/70 p-5 text-left flex items-start gap-3">
+              <div className="w-9 h-9 rounded-full bg-purple-100 text-purple-800 grid place-items-center shrink-0"><UserRound className="w-4 h-4" /></div>
+              <div className="min-w-0">
+                <strong className="block text-sm text-slate-900">{hasPatientProfile ? 'Часът е добавен към профила Ви' : 'Искате ли да виждате часовете си на едно място?'}</strong>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">{hasPatientProfile ? 'Можете да го прегледате заедно с останалите си посещения.' : 'Създайте профил с този имейл. Резервацията ще се свърже след потвърждението му.'}</p>
+                <Link href={hasPatientProfile ? '/moite-rezervacii/' : '/vhod?next=/moite-rezervacii/'} className="inline-flex mt-2.5 text-xs font-extrabold text-purple-800 hover:text-purple-950">
+                  {hasPatientProfile ? 'Виж моите резервации →' : 'Създай профил по желание →'}
+                </Link>
+              </div>
+            </div>
+          )}
 
           <div className="pt-4 border-t border-purple-50 flex flex-col gap-2.5">
             <button

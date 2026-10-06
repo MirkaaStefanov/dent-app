@@ -32,6 +32,9 @@ export default function Footer() {
             <Link href="/#contacts" className="hover:text-white transition-colors">
               Контакти
             </Link>
+            <Link href="/moite-rezervacii" className="hover:text-white transition-colors">
+              Моите резервации
+            </Link>
           </nav>
 
         </div>
