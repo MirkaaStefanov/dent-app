@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, CalendarDays, CheckCircle2, Mail, ShieldCheck } from 'lucide-react';
 import ClinicBrand from '@/components/ClinicBrand';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase/client';
+import { getAccountDestination } from '@/lib/supabase/admin';
 import styles from './patient-auth.module.css';
 
 function PatientLogin() {
@@ -14,19 +15,24 @@ function PatientLogin() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const destination = '/moite-rezervacii/';
+  const destination = '/vhod/';
   const [checkingSession, setCheckingSession] = useState(true);
   useEffect(() => {
     let active = true;
+    let timer: ReturnType<typeof setTimeout>;
+    async function openProfile() {
+      const target = await getAccountDestination();
+      if (active) router.replace(target);
+    }
     void supabase?.auth.getSession().then(({ data }) => {
       if (!active) return;
-      if (data.session) router.replace('/moite-rezervacii/');
+      if (data.session) void openProfile();
       else setCheckingSession(false);
     });
     const subscription = supabase?.auth.onAuthStateChange((_event, session) => {
-      if (session) router.replace('/moite-rezervacii/');
+      if (session) { clearTimeout(timer); timer = setTimeout(() => void openProfile(), 0); }
     }).data.subscription;
-    return () => { active = false; subscription?.unsubscribe(); };
+    return () => { active = false; clearTimeout(timer); subscription?.unsubscribe(); };
   }, [router]);
 
   async function sendMagicLink(event: FormEvent<HTMLFormElement>) {
@@ -95,7 +101,7 @@ function PatientLogin() {
           <div className={styles.card}>
             <span className={styles.kicker}>Вход или регистрация</span>
             <h2>Добре дошли</h2>
-            <p className={styles.lead}>Изберете най-удобния начин. Ако сте нов пациент, профилът се създава автоматично.</p>
+            <p className={styles.lead}>Влезте с Google или имейл. Лекарите отварят панела на кабинета, а пациентите — своите резервации.</p>
 
             <button type="button" className={styles.google} onClick={signInWithGoogle} disabled={busy}>
               <span className={styles.googleMark}>G</span> Продължи с Google

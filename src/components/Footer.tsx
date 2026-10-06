@@ -49,11 +49,11 @@ export default function Footer() {
               088 812 3456
             </a>
             <Link
-              href="/admin"
+              href="/vhod"
               className="inline-flex items-center gap-1 text-purple-200/70 hover:text-white transition-colors"
             >
               <Lock className="w-3 h-3" />
-              <span>Вход за лекар</span>
+              <span>Вход</span>
             </Link>
           </div>
         </div>

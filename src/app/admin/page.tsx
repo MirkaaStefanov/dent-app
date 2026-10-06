@@ -138,7 +138,7 @@ export default function AdminPage() {
       else {
         setIsAuthenticated(false); setAdminUser(null);
         const { data } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
-        if (active) router.replace(data.session ? '/admin/login?reason=access' : '/admin/login');
+        if (active) router.replace(data.session ? '/moite-rezervacii/' : '/vhod/');
       }
     };
     void checkAuth();
@@ -227,7 +227,7 @@ export default function AdminPage() {
     }
     setIsAuthenticated(false);
     setAdminUser(null);
-    router.replace('/admin/login');
+    router.replace('/vhod/');
   };
 
   // Промяна на статус на час (мигновена реакция)

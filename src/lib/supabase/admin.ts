@@ -1,6 +1,9 @@
 import { supabase, isSupabaseConfigured } from './client';
 
 export const isDemoEnabled = !isSupabaseConfigured && process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true';
+export async function getAccountDestination() {
+  return await getClinicAdmin() ? '/admin/' : '/moite-rezervacii/';
+}
 
 export async function getClinicAdmin() {
   if (!supabase) return null;
