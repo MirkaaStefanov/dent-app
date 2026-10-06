@@ -40,3 +40,27 @@
 .calendar { grid-template-columns: minmax(0, 1fr); }
 .calendar > * { min-width: 0; }
 .slotHeading > div { min-width: 0; }
+.toolbarRow { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.viewControls { order: 0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.periodControls { order: 1; margin-left: auto; min-width: 0; }
+.hiddenPeriod { display: none; }
+.weekScroller { display: none; }
+.weekGrid { display: grid; grid-template-columns: repeat(7, minmax(155px, 1fr)); align-items: start; gap: 10px; padding: 16px; background: white; border: 1px solid #e6dcea; border-radius: 14px; }
+.weekColumn { min-width: 0; min-height: 210px; }
+.weekAppointments { max-height: 480px; overflow-y: auto; }
+.weekGrid .appointmentCard { padding: 10px; gap: 7px; }
+.weekGrid .appointmentCard > div:last-child { display: none; }
+.weekGrid .appointmentCard > div:first-child { display: grid; gap: 6px; }
+.weekGrid .appointmentCard > div:nth-child(2) > div:first-child { display: none; }
+.weekGrid .appointmentCard > div:first-child > div:last-child > span:first-child:not(:last-child) { display: none; }
+.liveSummary { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; padding: 20px 24px; background: #f4edf8; border: 1px solid #dac7e5; border-radius: 16px; }
+.liveSummary > div { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.liveSummary strong { color: #553467; font-size: 15px; }
+.liveSummary small, .liveSummary > div > span:not(.liveDot) { font-size: 12px; color: #887192; }
+.liveDot { width: 8px; height: 8px; background: #83549b; border-radius: 50%; box-shadow: 0 0 0 4px #e7daef; }
+.nowLine { display: flex; align-items: center; gap: 12px; margin: 18px 0; color: #86509f; font-size: 11px; font-weight: 700; }
+.nowLine::after { content: ''; flex: 1; height: 1px; background: #aa7bbf; }
+.highlightPatient { border-radius: 14px; box-shadow: 0 0 0 2px #c3a2d4; }
+.patientCard { border-radius: 14px; padding: 22px; }
+@media (min-width: 640px) { .weekScroller { display: block; overflow-x: auto; padding-bottom: 8px; } }
+@media (max-width: 767px) { .periodControls { width: 100%; margin-left: 0; } .viewControls { width: 100%; justify-content: space-between; gap: 8px; } .liveSummary { padding: 17px; gap: 15px; } .patientCard { padding: 17px 14px; } }

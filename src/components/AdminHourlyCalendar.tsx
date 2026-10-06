@@ -3,7 +3,7 @@
 import AdminDayNavigator from './AdminDayNavigator';
 import PremiumSelect from '@/components/PremiumSelect';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import styles from './AdminHourlyCalendar.module.css';
 import { calculateAvailableSlots } from '@/lib/availability';
 import { Appointment, AppointmentStatus, DayOff, WorkingHour, Service } from '@/types/database';
@@ -134,8 +134,14 @@ export default function AdminHourlyCalendar({
   onNewAppointmentAt,
   daysOff = [],
 }: AdminHourlyCalendarProps) {
-  const today = new Date();
-  const todayStr = toIsoDate(today);
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(timer);
+  }, []);
+  const today = now;
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Sofia', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+  const currentTime = new Intl.DateTimeFormat('bg-BG', { timeZone: 'Europe/Sofia', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now);
   const activeDate = selectedDate || todayStr;
 
   // View modes: 'month' | 'week' | 'day'
@@ -250,6 +256,8 @@ export default function AdminHourlyCalendar({
 
   // Active day appointments
   const activeDayAppointments = appointmentsMapByDate[activeDate] || [];
+  const nextPatient = appointments.filter(apt => apt.date === todayStr && apt.status === 'confirmed' && timeStrToMinutes(apt.start_time) >= timeStrToMinutes(currentTime)).sort((a, b) => a.start_time.localeCompare(b.start_time))[0];
+  const currentPatient = appointments.find(apt => apt.date === todayStr && apt.status === 'confirmed' && timeStrToMinutes(apt.start_time) <= timeStrToMinutes(currentTime) && timeStrToMinutes(apt.end_time) > timeStrToMinutes(currentTime));
 
   // Month grid calculation (Monday = 0 ... Sunday = 6)
   const firstDayIndex = (new Date(viewYear, viewMonth, 1).getDay() + 6) % 7;
@@ -338,10 +346,10 @@ export default function AdminHourlyCalendar({
       <div className="bg-linear-to-r from-purple-50/80 via-white to-purple-50/70 rounded-3xl border border-purple-100 p-3.5 sm:p-5 shadow-sm space-y-3.5">
 
         {/* Row 1: Active Title & Stepper + View Switcher */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className={styles.toolbarRow}>
 
           {/* Stepper & Date Title */}
-          <div className={`${viewMode === 'day' ? 'hidden' : 'flex'} items-center justify-between sm:justify-start gap-2`}>
+          <div className={`${styles.periodControls} ${viewMode === 'day' ? styles.hiddenPeriod : ''} flex items-center gap-2`}>
             <div className="inline-flex items-center gap-0.5 bg-purple-100/90 p-1 rounded-2xl border border-purple-200 shadow-2xs">
               <button
                 type="button"
@@ -377,7 +385,7 @@ export default function AdminHourlyCalendar({
           </div>
 
           {/* View Mode Switcher + Add Button */}
-          <div className="flex items-center justify-between sm:justify-end gap-2">
+          <div className={styles.viewControls}>
             {/* View Switcher: Month / Week / Day */}
             <div className="inline-flex items-center bg-purple-100/80 p-1 rounded-2xl border border-purple-200">
               <button
@@ -999,7 +1007,7 @@ export default function AdminHourlyCalendar({
           </div>
 
           {/* Desktop/Tablet 7-Column Grid (md: and above) */}
-          <div className="hidden sm:grid grid-cols-7 gap-2.5 bg-white rounded-3xl border border-purple-100 shadow-md shadow-purple-950/5 p-3.5 sm:p-5">
+          <div className={styles.weekScroller}><div className={styles.weekGrid}>
             {weekDays.map((day, idx) => {
               const isWeekend = idx >= 5;
               const dayApts = appointmentsMapByDate[day.dateStr] || [];
@@ -1012,7 +1020,7 @@ export default function AdminHourlyCalendar({
                 <div
                   key={day.dateStr}
                   onClick={() => onSelectDate(day.dateStr)}
-                  className={`rounded-2xl border-2 transition-all flex flex-col p-2.5 sm:p-3 cursor-pointer relative overflow-hidden ${
+                  className={`${styles.weekColumn} group rounded-2xl border transition-all flex flex-col p-3 cursor-pointer relative overflow-hidden ${
                     dayOff
                       ? 'bg-rose-50/60 border-rose-300 ring-2 ring-rose-200/50 shadow-2xs'
                       : day.isToday
@@ -1091,7 +1099,7 @@ export default function AdminHourlyCalendar({
                   </div>
 
                   {/* Appointments or DayOff in this Day Column */}
-                  <div className="space-y-2 flex-1 min-h-[120px] z-10 relative">
+                  <div className={`${styles.weekAppointments} space-y-2 z-10 relative`}>
                     {dayOff ? (
                       <div className="p-3 rounded-xl bg-white/95 border-2 border-rose-300 shadow-xs space-y-1.5">
                         <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-rose-700">
@@ -1135,7 +1143,7 @@ export default function AdminHourlyCalendar({
                 </div>
               );
             })}
-          </div>
+          </div></div>
 
           {/* Active Day Agenda in Week View for Phone */}
           {(() => {
@@ -1190,6 +1198,7 @@ export default function AdminHourlyCalendar({
       {/* ═══════════════════════════════════════════════════════════ */}
       {viewMode === 'day' && (
         <div className="space-y-4">
+          {activeDate === todayStr && <div className={styles.liveSummary}><div><span className={styles.liveDot} /><strong>Сега {currentTime}</strong><small>Часът на кабинета</small></div><div><span>{currentPatient ? 'В момента' : 'Следващ пациент'}</span><strong>{currentPatient?.patient_name || nextPatient?.patient_name || 'Няма оставащи посещения'}</strong>{(currentPatient || nextPatient) && <small>{formatTimeHHmm((currentPatient || nextPatient)!.start_time)} – {formatTimeHHmm((currentPatient || nextPatient)!.end_time)}</small>}</div></div>}
 
           <div className={styles.daySummary}>
             <div className={styles.daySummaryRow}><span>{activeDayAppointments.length} посещения {isFiltering ? 'по избраните филтри' : 'за деня'}</span><button type="button" onClick={() => setShowFullTimeline(!showFullTimeline)}>{showFullTimeline ? 'Скрий хронологията' : 'Покажи хронологията'}</button></div>
@@ -1219,7 +1228,7 @@ export default function AdminHourlyCalendar({
           </div>
 
           <div className="space-y-3">
-            {activeDayAppointments.length === 0 ? <div className={styles.emptyDay}><Clock size={19} /><div><strong>{isFiltering ? 'Няма посещения по избраните филтри' : 'Няма записани посещения за този ден'}</strong><p>Изберете процедура и свободен час по-долу за ново записване.</p></div></div> : activeDayAppointments.map(apt => renderDetailedAppointmentCard(apt))}
+            {activeDayAppointments.length === 0 ? <div className={styles.emptyDay}><Clock size={19} /><div><strong>{isFiltering ? 'Няма посещения по избраните филтри' : 'Няма записани посещения за този ден'}</strong><p>Изберете процедура и свободен час по-долу за ново записване.</p></div></div> : activeDayAppointments.map((apt, index) => <React.Fragment key={apt.id}>{activeDate === todayStr && timeStrToMinutes(apt.start_time) >= timeStrToMinutes(currentTime) && (index === 0 || timeStrToMinutes(activeDayAppointments[index - 1].start_time) < timeStrToMinutes(currentTime)) && <div className={styles.nowLine}><span>Сега · {currentTime}</span></div>}<div className={apt.id === currentPatient?.id || apt.id === nextPatient?.id ? styles.highlightPatient : undefined}>{renderDetailedAppointmentCard(apt)}</div></React.Fragment>)}
           </div>
 
           <section className={styles.availability}>
