@@ -1,9 +1,9 @@
 'use client';
 
-import { FormEvent, Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, CalendarDays, CheckCircle2, Mail, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, CalendarDays, CheckCircle2, ShieldCheck } from 'lucide-react';
 import ClinicBrand from '@/components/ClinicBrand';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase/client';
 import { getAccountDestination } from '@/lib/supabase/admin';
@@ -12,7 +12,6 @@ import styles from './patient-auth.module.css';
 function PatientLogin() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const destination = '/vhod/';
@@ -35,30 +34,6 @@ function PatientLogin() {
     return () => { active = false; clearTimeout(timer); subscription?.unsubscribe(); };
   }, [router]);
 
-  async function sendMagicLink(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!supabase || !isSupabaseConfigured) {
-      setError('Входът временно не е достъпен. Моля, опитайте отново по-късно.');
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    setMessage(null);
-    const submittedEmail = String(new FormData(event.currentTarget).get('email') || '').trim();
-    const redirectTo = `${window.location.origin}${destination.startsWith('/') ? destination : '/moite-rezervacii/'}`;
-    const { error: authError } = await supabase.auth.signInWithOtp({
-      email: submittedEmail,
-      options: { emailRedirectTo: redirectTo },
-    });
-    setBusy(false);
-    if (authError) {
-      setError('Не успяхме да изпратим защитения линк. Проверете имейла и опитайте отново.');
-      return;
-    }
-    sessionStorage.setItem('dent_patient_email', submittedEmail);
-    setMessage('Изпратихме Ви защитен линк. Отворете го от имейла си, за да влезете.');
-  }
-
   async function signInWithGoogle() {
     if (!supabase || !isSupabaseConfigured) {
       setError('Входът временно не е достъпен.');
@@ -73,7 +48,7 @@ function PatientLogin() {
     });
     if (authError) {
       setBusy(false);
-      setError('Входът с Google не успя. Опитайте отново или използвайте имейл.');
+      setError('Входът с Google не успя. Моля, опитайте отново.');
     }
   }
 
@@ -94,33 +69,21 @@ function PatientLogin() {
             <ul>
               <li><CalendarDays /><span><strong>Преглеждате часовете си</strong>Предстоящи и минали посещения със статус.</span></li>
               <li><ShieldCheck /><span><strong>Сигурно свързване</strong>Старите часове се показват само след потвърден имейл.</span></li>
-              <li><CheckCircle2 /><span><strong>Без парола</strong>Получавате еднократен защитен линк по имейл.</span></li>
+              <li><CheckCircle2 /><span><strong>Без парола</strong>Влизате лесно и сигурно с Google профила си.</span></li>
             </ul>
           </div>
 
           <div className={styles.card}>
             <span className={styles.kicker}>Вход или регистрация</span>
             <h2>Добре дошли</h2>
-            <p className={styles.lead}>Влезте с Google или имейл. Лекарите отварят панела на кабинета, а пациентите — своите резервации.</p>
+            <p className={styles.lead}>Влезте с Google. Лекарите отварят панела на кабинета, а пациентите — своите резервации.</p>
 
             <button type="button" className={styles.google} onClick={signInWithGoogle} disabled={busy}>
-              <span className={styles.googleMark}>G</span> Продължи с Google
+              <span className={styles.googleMark}>G</span> {busy ? 'Пренасочване към Google…' : 'Продължи с Google'}
             </button>
 
-            <div className={styles.divider}><span>или с имейл</span></div>
-
-            <form onSubmit={sendMagicLink} className={styles.form}>
-              <label htmlFor="patient-email">Имейл адрес</label>
-              <div className={styles.inputWrap}>
-                <Mail size={18} />
-                <input id="patient-email" name="email" type="email" required autoComplete="email" defaultValue="" placeholder="ime@example.com" />
-              </div>
-              <button type="submit" className={styles.submit} disabled={busy}>{busy ? 'Моля, изчакайте…' : 'Изпрати защитен линк'}</button>
-            </form>
-
-            {message && <p className={styles.success} role="status">{message}</p>}
             {error && <p className={styles.error} role="alert">{error}</p>}
-            <p className={styles.finePrint}>С продължаването потвърждавате, че имейлът е Ваш. Не изпращаме рекламни съобщения.</p>
+            <p className={styles.finePrint}>При първи вход създаваме Вашия профил автоматично. Не изпращаме рекламни съобщения.</p>
           </div>
         </section>
       </div>
