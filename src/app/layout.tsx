@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  icons: { icon: [{ url: '/clinic-icon.svg', type: 'image/svg+xml' }], apple: '/apple-touch-icon.png' },
   title: "Д-р Джанел Аяз | Стоматолог Търговище - Записване на час",
   description:
     "Модерен стоматологичен кабинет в гр. Търговище. Професионално и безболезнено дентално лечение, естетика, избелване и профилактика. Запазете час онлайн за минута.",
