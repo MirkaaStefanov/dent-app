@@ -52,6 +52,11 @@
 .category { color: #74448d; font-weight: 600; }
 .price > span { color: #633a78; }
 .book { color: #633a78; font-weight: 600; }
+.book::after { content: ''; position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
+.service { cursor: pointer; transition: border-color .18s, box-shadow .18s; }
+.service:hover { box-shadow: 0 8px 24px #633a7815; }
+.service:has(.book:focus-visible) { outline: 3px solid #81519a; outline-offset: 4px; }
+.details { position: relative; z-index: 2; cursor: auto; }
 .viewPicker { background: #fff; border-color: #d8c4e4; }
 .categorySelect button { border-color: #cbb0dc; background: #fff; color: #633a78; }
 .list .service { background: #fff; border-left: 3px solid #a780bd; border-bottom-color: #dfd0e8; padding-left: 18px; }
