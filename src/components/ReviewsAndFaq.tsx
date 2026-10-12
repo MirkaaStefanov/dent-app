@@ -10,12 +10,12 @@ const faqs = [
     a: 'Комфортът е индивидуален. По време на прегледа обсъждаме подходящото обезболяване и какво да очаквате. Ако изпитвате тревожност, споделете я предварително.',
   },
   {
-    q: 'В каква валута са обявени цените?',
-    a: 'Цените са показани в евро (€) и са ориентировъчни. Конкретната стойност зависи от необходимото лечение и се уточнява при прегледа.',
+    q: 'Работите ли по здравна каса?',
+    a: 'Да, кабинетът работи с НЗОК. Свържете се с нас за информация за Вашето посещение.',
   },
   {
     q: 'Как се записва час през сайта?',
-    a: 'Процесът отнема по-малко от минута: избирате желаната процедура от списъка, посочвате удобен ден и час от интерактивния календар и въвеждате име и телефон. Часът се запазва директно в графика на кабинета.',
+    a: 'Изберете услуга, ден и час, след това въведете име и телефон.',
   },
   {
     q: 'Има ли възможност за паркиране до кабинета?',
@@ -28,7 +28,7 @@ const faqs = [
 ];
 
 export default function ReviewsAndFaq() {
-  const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const toggleFaq = (index: number) => {
     setOpenIndex(openIndex === index ? null : index);
@@ -44,9 +44,6 @@ export default function ReviewsAndFaq() {
           <h2 className="font-serif text-3xl sm:text-4xl font-normal text-slate-900 tracking-tight mb-3">
             Често задавани въпроси
           </h2>
-          <p className="text-base text-slate-500">
-            Малко повече яснота. Малко по-малко притеснение.
-          </p>
           <Link href="/zapisi-chas" className="clinic-text-link">Запазете час →</Link>
         </div>
         <div>
@@ -55,7 +52,7 @@ export default function ReviewsAndFaq() {
           {faqs.map((faq, index) => {
             const isOpen = openIndex === index;
             return (
-              <div key={index} className="py-5">
+              <div key={index} id={index === 1 ? "nhif" : undefined} className="py-5">
                 <button
                   type="button"
                   className="w-full flex items-center justify-between text-left focus:outline-hidden group"

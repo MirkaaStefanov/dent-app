@@ -3,9 +3,10 @@ export type Service = {
   title: string;
   description: string;
   duration_minutes: number;
-  price_bgn: number;
+  price_bgn: number | null;
   is_active: boolean;
   category?: string;
+  category_id?: string | null;
   sort_order: number;
   created_at?: string;
 };
@@ -65,4 +66,7 @@ export type ClinicSettings = {
   email: string;
   slot_interval_minutes: number;
   reminder_hours_before: number;
+  show_prices?: boolean;
 };
+
+export type ServiceCategory = { id: string; name: string; sort_order: number };

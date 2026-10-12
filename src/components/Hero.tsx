@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import ClinicMark from './ClinicMark';
 import { ArrowUpRight, ArrowRight, Calendar, Check, Sparkles } from 'lucide-react';
 
@@ -9,12 +10,12 @@ export default function Hero() {
         <div className="hero-copy">
           <span className="eyebrow"><span className="status-dot" /> ДЕНТАЛНА ГРИЖА · ТЪРГОВИЩЕ</span>
           <h1>Повече спокойствие.<br />Повече поводи<br />за <em>усмивка.</em></h1>
-          <p>Грижа за Вашата усмивка с внимание към Вас. Д-р Джанел Аяз — от първия преглед до индивидуалния план за лечение.</p>
+          <p>Д-р Джанел Аяз · Дентална грижа в Търговище.</p>
           <div className="hero-actions">
             <Link href="/zapisi-chas" className="clinic-button">Запазете час <ArrowUpRight size={19} /></Link>
             <Link href="#services" className="clinic-text-link">Разгледайте услугите <ArrowRight size={17} /></Link>
           </div>
-          <div className="hero-assurances"><span><Check size={16} /> Индивидуален подход</span><span><Check size={16} /> Онлайн записване</span></div>
+          <a href="#nhif" className="nhif-badge"><Image src="/images/nhif-logo.png" width="48" height="48" alt="Лого на НЗОК" /><span>Работим с НЗОК<small>Национална здравноосигурителна каса</small></span></a><div className="hero-assurances"><span><Check size={16} /> Индивидуален подход</span><span><Check size={16} /> Онлайн записване</span></div>
         </div>
         <div className="smile-art" aria-label="Декоративен символ на дентална грижа">
           <div className="art-topline"><span>Д-Р ДЖАНЕЛ АЯЗ</span><Sparkles size={22} /></div>

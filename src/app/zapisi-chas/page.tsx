@@ -5,7 +5,7 @@ import Link from 'next/link';
 import styles from './booking.module.css';
 import { useSearchParams } from 'next/navigation';
 import { Service, Appointment, DayOff, WorkingHour } from '@/types/database';
-import { getServices, getAvailableSlots, addAppointment, getDaysOff, getWorkingHours } from '@/lib/storage';
+import { getServices, getClinicSettings, getAvailableSlots, addAppointment, getDaysOff, getWorkingHours } from '@/lib/storage';
 import { initialServices, initialWorkingHours } from '@/lib/data/initialData';
 import { formatBulgarianDate } from '@/lib/notifications';
 import { 
@@ -70,6 +70,9 @@ function BookingWizardContent() {
 
   const [services, setServices] = useState<Service[]>(initialServices);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [showPrices, setShowPrices] = useState(false);
+  useEffect(() => { void getClinicSettings().then(settings => setShowPrices(settings.show_prices === true)); }, []);
+
   const [currentStep, setCurrentStep] = useState<StepNumber>(1);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
@@ -231,7 +234,7 @@ function BookingWizardContent() {
         service_id: selectedService.id,
         service_title: selectedService.title,
         service_duration: selectedService.duration_minutes,
-        service_price: selectedService.price_bgn,
+        service_price: selectedService.price_bgn ?? undefined,
         patient_name: patientName.trim(),
         patient_phone: patientPhone.trim(),
         patient_email: patientEmail.trim() || undefined,
@@ -464,7 +467,7 @@ function BookingWizardContent() {
         </div>
 
         {bookingError && <p role="alert" className={styles.error}>{bookingError}</p>}
-        {currentStep > 1 && selectedService && <div className={styles.selectedService}><div><span>ИЗБРАНА УСЛУГА</span><strong>{selectedService.title}</strong></div><div><span>{selectedService.price_bgn} €</span><button type="button" onClick={() => setCurrentStep(1)}>Промени</button></div></div>}
+        {currentStep > 1 && selectedService && <div className={styles.selectedService}><div><span>ИЗБРАНА УСЛУГА</span><strong>{selectedService.title}</strong></div><div>{showPrices && selectedService.price_bgn !== null && <span>{selectedService.price_bgn} €</span>}<button type="button" onClick={() => setCurrentStep(1)}>Промени</button></div></div>}
 
         {/* ═══════════════════════════════════════════════════════════ */}
         {/* STEP 1: SERVICE */}
@@ -512,9 +515,9 @@ function BookingWizardContent() {
                       </div>
 
                       <div className="text-right shrink-0 pl-2">
-                        <span className="block text-base font-extrabold text-purple-950">
+                        {showPrices && service.price_bgn !== null && <span className="block text-base font-extrabold text-purple-950">
                           {service.price_bgn} €
-                        </span>
+                        </span>}
                         <span className="text-xs font-bold text-purple-700 flex items-center gap-0.5 justify-end mt-0.5">
                           <span>Избери</span>
                           <ArrowRight className="w-3 h-3" />
@@ -710,10 +713,10 @@ function BookingWizardContent() {
                   {formatBulgarianDate(selectedDate)} в {selectedSlot} ч.
                 </span>
               </div>
-              <div className="flex items-center justify-between">
+              {showPrices && selectedService?.price_bgn != null && <div className="flex items-center justify-between">
                 <span className="text-slate-500">Ориентировъчна цена:</span>
                 <span className="font-extrabold text-purple-950 text-sm">{selectedService?.price_bgn} €</span>
-              </div>
+              </div>}
             </div>
 
             {/* Inputs */}

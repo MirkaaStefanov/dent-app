@@ -1,5 +1,6 @@
 'use client';
 
+import ServiceManager from '@/components/ServiceManager';
 import ReminderSettings from '@/components/ReminderSettings';
 import PremiumSelect from '@/components/PremiumSelect';
 
@@ -23,9 +24,6 @@ import {
   getClinicSettings,
   updateClinicSettings,
   getServices,
-  addService,
-  updateService,
-  deleteService,
   getWorkingHours,
   updateWorkingHour,
   getDaysOff,
@@ -105,12 +103,7 @@ export default function AdminPage() {
   const [manualSubmitting, setManualSubmitting] = useState(false);
 
   // Модал / форма за нова услуга
-  const [isNewServiceOpen, setIsNewServiceOpen] = useState(false);
-  const [newServiceTitle, setNewServiceTitle] = useState('');
-  const [newServiceCategory, setNewServiceCategory] = useState('Обща стоматология');
-  const [newServiceDuration, setNewServiceDuration] = useState<number>(30);
-  const [newServicePrice, setNewServicePrice] = useState<number>(50);
-  const [newServiceDesc, setNewServiceDesc] = useState('');
+
 
   // Форма за почивни дни
   const [newDayOffStart, setNewDayOffStart] = useState('');
@@ -297,7 +290,7 @@ export default function AdminPage() {
         service_id: selectedSrv.id,
         service_title: selectedSrv.title,
         service_duration: selectedSrv.duration_minutes,
-        service_price: selectedSrv.price_bgn,
+        service_price: selectedSrv.price_bgn ?? undefined,
         patient_name: manualName.trim(),
         patient_phone: manualPhone.trim(),
         patient_email: manualEmail.trim() || undefined,
@@ -327,46 +320,6 @@ export default function AdminPage() {
   };
 
   // Добавяне на нова услуга
-  const handleAddServiceSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newServiceTitle.trim() || newServiceDuration <= 0) return;
-
-    const created = await addService({
-      title: newServiceTitle.trim(),
-      description: newServiceDesc.trim(),
-      category: newServiceCategory,
-      duration_minutes: Number(newServiceDuration),
-      price_bgn: Number(newServicePrice),
-      is_active: true,
-      sort_order: services.length + 1,
-    });
-
-    setServices((prev) => [...prev, created]);
-    setIsNewServiceOpen(false);
-    setNewServiceTitle('');
-    setNewServiceDesc('');
-    showToast(`Услугата "${created.title}" е добавена успешно!`);
-  };
-
-  // Изтриване на услуга
-  const handleDeleteService = async (id: string, title: string) => {
-    if (confirm(`Сигурни ли сте, че искате да изтриете услугата "${title}"?`)) {
-      await deleteService(id);
-      setServices((prev) => prev.filter((s) => s.id !== id));
-      showToast(`Услугата "${title}" беше изтрита.`);
-    }
-  };
-
-  // Превключване на активност на услуга (мигновена реакция)
-  const handleToggleServiceActive = async (service: Service) => {
-    const nextActive = !service.is_active;
-    setServices((prev) =>
-      prev.map((s) => (s.id === service.id ? { ...s, is_active: nextActive } : s))
-    );
-    showToast(`Услугата е ${nextActive ? 'активирана' : 'скрита'}.`);
-    await updateService(service.id, { is_active: nextActive });
-  };
-
   // Запазване на промени по работното време (мигновена реакция)
   const handleWorkingHourChange = async (
     dayOfWeek: DayOfWeek,
@@ -786,96 +739,7 @@ export default function AdminPage() {
         {/* ========================================================= */}
         {/* ТАБ 2: ДЕНТАЛНИ УСЛУГИ (SERVICES MANAGEMENT) */}
         {/* ========================================================= */}
-        {activeTab === 'services' && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">
-                  Управление на услуги & ценоразпис ({services.length})
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Промените по услугите се визуализират директно в сайта и формата за онлайн записване.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setIsNewServiceOpen(true)}
-                className="px-4 py-2.5 rounded-xl bg-purple-800 hover:bg-purple-900 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>+ Добави нова процедура</span>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4.5">
-              {services.map((service) => (
-                <div
-                  key={service.id}
-                  className={`p-5 rounded-2xl bg-white border transition-all flex flex-col justify-between ${
-                    service.is_active
-                      ? 'border-slate-200/90 shadow-xs hover:border-purple-300 hover:shadow-md'
-                      : 'border-slate-200 bg-slate-50/60 opacity-60'
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-purple-50 text-purple-800 border border-purple-100">
-                        {service.category || 'Стоматология'}
-                      </span>
-                      <div className="flex items-center gap-1 text-xs text-slate-500 font-medium">
-                        <Clock className="w-3.5 h-3.5 text-purple-600" />
-                        <span>~{service.duration_minutes} мин.</span>
-                      </div>
-                    </div>
-
-                    <h4 className="font-bold text-slate-900 text-base leading-snug">
-                      {service.title}
-                    </h4>
-
-                    {service.description && (
-                      <p className="text-xs text-slate-600 mt-2 line-clamp-3 leading-relaxed">
-                        {service.description}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="mt-5 pt-3.5 border-t border-slate-100 flex items-center justify-between">
-                    <div>
-                      <span className="text-xs text-slate-400 block font-medium">Цена</span>
-                      <span className="text-lg font-extrabold text-slate-900">
-                        {service.price_bgn} €
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleServiceActive(service)}
-                        className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-colors cursor-pointer ${
-                          service.is_active
-                            ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                            : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
-                        }`}
-                      >
-                        {service.is_active ? 'Скрий' : 'Активирай'}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteService(service.id, service.title)}
-                        className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                        title="Изтрий услуга"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {activeTab === 'services' && <ServiceManager services={services} onChange={setServices} settings={settings} onSettingsChange={setSettings} />}
 
         {/* ========================================================= */}
         {/* ТАБ 3: РАБОТНО ВРЕМЕ (WORKING HOURS) */}
@@ -1384,117 +1248,6 @@ export default function AdminPage() {
       {/* ========================================================= */}
       {/* МОДАЛ: ДОБАВЯНЕ НА НОВА УСЛУГА */}
       {/* ========================================================= */}
-      {isNewServiceOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center border border-purple-100">
-                  <FileText className="w-4 h-4" />
-                </div>
-                <span>Нова дентална услуга</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsNewServiceOpen(false)}
-                className="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleAddServiceSubmit} className="space-y-3.5">
-              <div>
-                <label htmlFor="manual-field-8" className="block text-xs font-bold text-slate-700 mb-1">
-                  Име на процедурата *
-                </label>
-                <input id="manual-field-8"
-                  type="text"
-                  required
-                  value={newServiceTitle}
-                  onChange={(e) => setNewServiceTitle(e.target.value)}
-                  placeholder="напр. Фотополимерна обтурация"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="manual-field-9" className="block text-xs font-bold text-slate-700 mb-1">
-                  Категория
-                </label>
-                <input id="manual-field-9"
-                  type="text"
-                  value={newServiceCategory}
-                  onChange={(e) => setNewServiceCategory(e.target.value)}
-                  placeholder="напр. Терапия, Естетика, Профилактика"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="manual-field-10" className="block text-xs font-bold text-slate-700 mb-1">
-                    Продължителност (мин) *
-                  </label>
-                  <input id="manual-field-10"
-                    type="number"
-                    required
-                    min={15}
-                    step={15}
-                    value={newServiceDuration}
-                    onChange={(e) => setNewServiceDuration(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="manual-field-11" className="block text-xs font-bold text-slate-700 mb-1">
-                    Цена (€) *
-                  </label>
-                  <input id="manual-field-11"
-                    type="number"
-                    required
-                    min={0}
-                    value={newServicePrice}
-                    onChange={(e) => setNewServicePrice(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="manual-field-12" className="block text-xs font-bold text-slate-700 mb-1">
-                  Описание на процедурата
-                </label>
-                <textarea id="manual-field-12"
-                  rows={3}
-                  value={newServiceDesc}
-                  onChange={(e) => setNewServiceDesc(e.target.value)}
-                  placeholder="Опишете накратко какво включва манипулацията..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsNewServiceOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
-                >
-                  Отказ
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-purple-800 hover:bg-purple-900 text-white font-bold text-xs shadow-md shadow-purple-900/15 cursor-pointer transition-all"
-                >
-                  Добави услугата
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* ========================================================= */}
       {/* ИНТЕРАКТИВЕН ПОП-ЪП МОДАЛ ЗА ДЕТАЙЛИ ОТ KPI КАРТИТЕ */}
       {/* ========================================================= */}

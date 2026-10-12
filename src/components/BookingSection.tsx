@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Service, Appointment, DayOff } from '@/types/database';
-import { getAvailableSlots, addAppointment, getDaysOff } from '@/lib/storage';
+import { getClinicSettings, getAvailableSlots, addAppointment, getDaysOff } from '@/lib/storage';
 import { formatBulgarianDate } from '@/lib/notifications';
 import confetti from 'canvas-confetti';
 import { 
@@ -36,6 +36,9 @@ export default function BookingSection({
   onSelectService,
 }: BookingSectionProps) {
   const todayStr = new Date().toISOString().split('T')[0];
+
+  const [showPrices, setShowPrices] = useState(false);
+  useEffect(() => { void getClinicSettings().then(settings => setShowPrices(settings.show_prices === true)); }, []);
 
   const [currentStep, setCurrentStep] = useState<StepNumber>(1);
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
@@ -147,7 +150,7 @@ export default function BookingSection({
         service_id: selectedService.id,
         service_title: selectedService.title,
         service_duration: selectedService.duration_minutes,
-        service_price: selectedService.price_bgn,
+        service_price: selectedService.price_bgn ?? undefined,
         patient_name: patientName.trim(),
         patient_phone: patientPhone.trim(),
         patient_email: patientEmail.trim() || undefined,
@@ -344,7 +347,7 @@ export default function BookingSection({
               <div className="flex items-center gap-1.5 text-slate-700 min-w-0">
                 <span className="font-bold text-purple-900 shrink-0">Услуга:</span>
                 <span className="truncate font-medium">{selectedService.title}</span>
-                <span className="shrink-0 text-slate-500 font-bold">({selectedService.price_bgn} €)</span>
+                {showPrices && selectedService.price_bgn !== null && <span className="shrink-0 text-slate-500 font-bold">({selectedService.price_bgn} €)</span>}
               </div>
               <button
                 type="button"
@@ -404,9 +407,9 @@ export default function BookingSection({
                         </div>
 
                         <div className="text-right shrink-0 pl-2">
-                          <span className="block text-base font-extrabold text-slate-900">
+                          {showPrices && service.price_bgn !== null && <span className="block text-base font-extrabold text-slate-900">
                             {service.price_bgn} €
-                          </span>
+                          </span>}
                           <span className="text-[11px] font-bold text-purple-700 flex items-center gap-0.5 justify-end mt-1">
                             <span>Избери</span>
                             <ArrowRight className="w-3 h-3" />
@@ -760,10 +763,10 @@ export default function BookingSection({
                     {formatBulgarianDate(selectedDate)} в {selectedSlot} ч.
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
+                {showPrices && selectedService?.price_bgn != null && <div className="flex items-center justify-between">
                   <span className="text-slate-500">Ориентировъчна цена:</span>
                   <span className="font-extrabold text-slate-900 text-sm sm:text-base">{selectedService?.price_bgn} €</span>
-                </div>
+                </div>}
               </div>
 
               {/* Inputs */}

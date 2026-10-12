@@ -1,6 +1,7 @@
 import { calculateAvailableSlots } from './availability';
 import {
   Service,
+  ServiceCategory,
   WorkingHour,
   DayOff,
   Appointment,
@@ -20,6 +21,7 @@ import { supabase, isSupabaseConfigured } from './supabase/client';
 const STORAGE_KEYS = {
   SETTINGS: 'dent_targovishte_settings',
   SERVICES: 'dent_targovishte_services',
+  CATEGORIES: 'dent_targovishte_categories',
   WORKING_HOURS: 'dent_targovishte_working_hours',
   DAYS_OFF: 'dent_targovishte_days_off',
   APPOINTMENTS: 'dent_targovishte_appointments',
@@ -140,8 +142,8 @@ export async function getServices(): Promise<Service[]> {
   const local = getLocalItem<Service[]>(STORAGE_KEYS.SERVICES, initialServices);
 
   const res = await runWithTimeout<Service[]>(async () => {
-    const { data, error } = await supabase!.from('services').select('*').order('sort_order', { ascending: true });
-    if (!error && data && data.length > 0) return data as Service[];
+    const { data, error } = await supabase!.from('services').select('*, service_categories(name)').order('sort_order', { ascending: true });
+    if (!error && data) return data.map(({ service_categories, ...service }) => ({ ...service, category: service_categories?.name || service.category })) as Service[];
     return null;
   });
 
@@ -153,54 +155,67 @@ export async function getServices(): Promise<Service[]> {
   return local;
 }
 
+export async function getServiceCategories(): Promise<ServiceCategory[]> {
+  const fallback = [...new Set(initialServices.map(s => s.category || 'Обща стоматология'))].map((name, sort_order) => ({ id: `category-${sort_order}`, name, sort_order }));
+  const local = getLocalItem<ServiceCategory[]>(STORAGE_KEYS.CATEGORIES, fallback);
+  const result = await runWithTimeout(async () => {
+    const { data, error } = await supabase!.from('service_categories').select('*').order('sort_order');
+    return error ? null : data as ServiceCategory[];
+  });
+  if (result) setLocalItem(STORAGE_KEYS.CATEGORIES, result, false);
+  return result || local;
+}
+
+export async function saveServiceCategory(name: string, id?: string): Promise<ServiceCategory> {
+  const categories = await getServiceCategories();
+  name = name.trim();
+  if (!name || categories.some(c => c.id !== id && c.name.toLocaleLowerCase('bg') === name.toLocaleLowerCase('bg'))) throw new Error('Въведете уникално име на категория.');
+  let saved = { id: id || crypto.randomUUID(), name, sort_order: categories.find(c => c.id === id)?.sort_order ?? categories.length };
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('service_categories').upsert(saved).select().abortSignal(AbortSignal.timeout(10000)).single();
+    if (error) throw new Error('Категорията не беше записана. Опитайте отново.');
+    saved = data;
+  }
+  setLocalItem(STORAGE_KEYS.CATEGORIES, [...categories.filter(c => c.id !== saved.id), saved].sort((a,b) => a.sort_order - b.sort_order));
+  const oldName = categories.find(c => c.id === id)?.name;
+  const services = getLocalItem<Service[]>(STORAGE_KEYS.SERVICES, initialServices);
+  setLocalItem(STORAGE_KEYS.SERVICES, services.map(s => s.category_id === saved.id || (id && !s.category_id && s.category === oldName) ? { ...s, category_id: saved.id, category: saved.name } : s));
+  return saved;
+}
+
 export async function addService(serviceData: Omit<Service, 'id' | 'created_at'>): Promise<Service> {
-  const newService: Service = {
-    ...serviceData,
-    id: `srv-${Date.now()}`,
-    created_at: new Date().toISOString(),
-  };
-
+  let saved: Service = { ...serviceData, id: crypto.randomUUID(), created_at: new Date().toISOString() };
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('services').insert(serviceData).select().abortSignal(AbortSignal.timeout(10000)).single();
+    if (error) throw new Error('Услугата не беше записана. Опитайте отново.');
+    saved = data;
+  }
   const current = getLocalItem<Service[]>(STORAGE_KEYS.SERVICES, initialServices);
-  const updated = [...current, newService];
-  setLocalItem(STORAGE_KEYS.SERVICES, updated, true);
-
-  // Опит за запис в Supabase на заден план
-  runWithTimeout(async () => {
-    const { data } = await supabase!.from('services').insert(serviceData).select().single();
-    if (data) {
-      const refreshed = getLocalItem<Service[]>(STORAGE_KEYS.SERVICES, initialServices);
-      setLocalItem(
-        STORAGE_KEYS.SERVICES,
-        refreshed.map((s) => (s.id === newService.id ? data : s)),
-        false
-      );
-    }
-  }).catch(() => {});
-
-  return newService;
+  setLocalItem(STORAGE_KEYS.SERVICES, [...current, saved]);
+  return saved;
 }
 
 export async function updateService(id: string, updates: Partial<Service>): Promise<Service | null> {
   const current = getLocalItem<Service[]>(STORAGE_KEYS.SERVICES, initialServices);
-  const index = current.findIndex((s) => s.id === id);
-  if (index === -1) return null;
-
-  const updatedService = { ...current[index], ...updates };
-  current[index] = updatedService;
-  setLocalItem(STORAGE_KEYS.SERVICES, [...current], true);
-
-  // Опит за обновяване в Supabase на заден план без блокиране
-  runWithTimeout(() => supabase!.from('services').update(updates).eq('id', id)).catch(() => {});
-
-  return updatedService;
+  const service = current.find(s => s.id === id);
+  if (!service) throw new Error('Услугата не беше намерена. Обновете страницата.');
+  let saved = { ...service, ...updates };
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('services').update(updates).eq('id', id).select().abortSignal(AbortSignal.timeout(10000)).single();
+    if (error) throw new Error('Промените не бяха записани. Опитайте отново.');
+    saved = data;
+  }
+  setLocalItem(STORAGE_KEYS.SERVICES, current.map(s => s.id === id ? saved : s));
+  return saved;
 }
 
 export async function deleteService(id: string): Promise<boolean> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('services').delete().eq('id', id).abortSignal(AbortSignal.timeout(10000));
+    if (error) throw new Error('Услугата не беше изтрита. Опитайте отново.');
+  }
   const current = getLocalItem<Service[]>(STORAGE_KEYS.SERVICES, initialServices);
-  const filtered = current.filter((s) => s.id !== id);
-  setLocalItem(STORAGE_KEYS.SERVICES, filtered, true);
-
-  runWithTimeout(() => supabase!.from('services').delete().eq('id', id)).catch(() => {});
+  setLocalItem(STORAGE_KEYS.SERVICES, current.filter(s => s.id !== id));
   return true;
 }
 
