@@ -183,6 +183,22 @@ export async function saveServiceCategory(name: string, id?: string): Promise<Se
   return saved;
 }
 
+export async function deleteServiceCategory(id: string): Promise<void> {
+  const categories = await getServiceCategories();
+  const category = categories.find(c => c.id === id);
+  if (!category) throw new Error('Категорията не беше намерена. Обновете страницата.');
+  const services = await getServices();
+  if (services.some(s => s.category_id === id || (!s.category_id && s.category === category.name))) {
+    throw new Error('Категорията съдържа услуги и не може да бъде изтрита.');
+  }
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('service_categories').delete().eq('id', id).select('id').abortSignal(AbortSignal.timeout(10000));
+    if (error?.code === '23503') throw new Error('Категорията съдържа услуги и не може да бъде изтрита.');
+    if (error || !data?.length) throw new Error('Категорията не беше изтрита. Опитайте отново.');
+  }
+  setLocalItem(STORAGE_KEYS.CATEGORIES, categories.filter(c => c.id !== id));
+}
+
 export async function addService(serviceData: Omit<Service, 'id' | 'created_at'>): Promise<Service> {
   let saved: Service = { ...serviceData, id: crypto.randomUUID(), created_at: new Date().toISOString() };
   if (isSupabaseConfigured && supabase) {
