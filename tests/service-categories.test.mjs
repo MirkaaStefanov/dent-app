@@ -26,7 +26,7 @@ test('category migration preserves services, supports optional prices and restri
   assert.equal((await db.query('select * from service_categories')).rows.length, 3);
   await db.exec("delete from service_categories where name='Детска грижа';");
   assert.equal((await db.query('select * from service_categories')).rows.length, 2);
-  await assert.rejects(db.exec("delete from service_categories where name='Профилактика';"), {code: '23503'});
+  await assert.rejects(db.exec("delete from service_categories where name='Профилактика';"), {code: '23001'});
   await db.exec('reset role;');
   assert.equal((await db.query('select count(*)::integer as n from services')).rows[0].n, 3);
  } finally {await db.close();}

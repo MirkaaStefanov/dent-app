@@ -193,7 +193,7 @@ export async function deleteServiceCategory(id: string): Promise<void> {
   }
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase.from('service_categories').delete().eq('id', id).select('id').abortSignal(AbortSignal.timeout(10000));
-    if (error?.code === '23503') throw new Error('Категорията съдържа услуги и не може да бъде изтрита.');
+    if (error?.code === '23503' || error?.code === '23001') throw new Error('Категорията съдържа услуги и не може да бъде изтрита.');
     if (error || !data?.length) throw new Error('Категорията не беше изтрита. Опитайте отново.');
   }
   setLocalItem(STORAGE_KEYS.CATEGORIES, categories.filter(c => c.id !== id));
