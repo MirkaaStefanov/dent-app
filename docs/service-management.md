@@ -1,6 +1,6 @@
 # Services and categories
 
-Apply `supabase/migrations/20261012093809_service_categories_and_optional_prices.sql` to the site's Supabase project before releasing this branch. The connected Supabase tool did not have access to project `ronkhlurdqedwjgebqtr`, so the migration has only been validated locally.
+The migration `supabase/migrations/20261012093809_service_categories_and_optional_prices.sql` was applied to project `ronkhlurdqedwjgebqtr` through its authenticated SQL Editor on 12 October 2026. Production REST checks confirmed the five category records, service category relations, and `show_prices = false`. The connected Supabase tool still uses an account without access to this project; dashboard access is available through the correct account.
 
 The migration preserves existing services and prices, creates category records from existing category names, links services through `category_id`, and defaults `clinic_settings.show_prices` to false. `services.category` remains for compatibility with older clients; current clients resolve names through the category relation. Prices may be null, including when global display is enabled.
 
