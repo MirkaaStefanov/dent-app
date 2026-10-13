@@ -48,3 +48,24 @@
   .dialogHeading h2 { font-size: 18px; }
 }
 .editorFields { display: grid; gap: 20px; min-width: 0; }
+
+.serviceInfo { min-width: 0; flex: 1; }
+.services h3 { margin: 0 0 9px; }
+.manager .serviceName { display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: 44px; background: transparent; color: #38273f; padding: 0; border-radius: 4px; text-align: left; font-size: 18px; font-weight: 650; line-height: 1.45; white-space: normal; overflow-wrap: anywhere; }
+.serviceName svg { flex-shrink: 0; margin-top: 5px; color: #754593; }
+.serviceInfo small { display: block; line-height: 1.5; overflow-wrap: anywhere; }
+.serviceInfo p { margin-top: 5px; font-variant-numeric: tabular-nums; }
+.serviceActions { display: flex; align-items: flex-start; gap: 8px; }
+.serviceActions > button { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.serviceMore { min-width: 80px; }
+.serviceMore summary { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 10px; color: #633a78; cursor: pointer; border: 1px solid #dfd0e8; border-radius: 8px; list-style: none; font-size: 13px; }
+.serviceMore summary::-webkit-details-marker { display: none; }
+.serviceMore[open] summary svg { transform: rotate(180deg); }
+.serviceMore > div { display: grid; gap: 6px; padding-top: 8px; }
+@media(max-width: 767px) {
+  .services { gap: 14px; }
+  .services article { display: grid; grid-template-columns: minmax(0, 1fr); padding: 18px 16px; background: white; border: 1px solid #dfd0e8; border-radius: 14px; gap: 16px; }
+  .serviceActions { display: grid; grid-template-columns: minmax(0, 1fr) 90px; align-items: start; }
+  .services .serviceMore > div { grid-template-columns: 1fr; }
+  .serviceMore > div button { padding: 10px 6px; overflow-wrap: anywhere; }
+}

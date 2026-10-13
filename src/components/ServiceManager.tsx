@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ChevronDown, Pencil } from 'lucide-react';
 import { Service, ServiceCategory, ClinicSettings } from '@/types/database';
 import { addService, updateService, deleteService, getServiceCategories, saveServiceCategory, deleteServiceCategory, getServices, updateClinicSettings } from '@/lib/storage';
 import styles from './ServiceManager.module.css';
@@ -60,7 +61,20 @@ export default function ServiceManager({ services, onChange, settings, onSetting
         }}>Изтрий</button>}
       </div>;
     })}</div><form onSubmit={e => {e.preventDefault(); void perform(async () => {await saveServiceCategory(categoryName, categoryEdit || undefined); setCategories(await getServiceCategories()); onChange(await getServices()); setCategoryName(''); setCategoryEdit('');});}}><label htmlFor="category-name">{categoryEdit ? 'Ново име на категорията' : 'Добави категория'}</label><div className={styles.inline}><input id="category-name" required maxLength={80} value={categoryName} onChange={e => setCategoryName(e.target.value)} placeholder="Напр. Профилактика" /><button disabled={busy}>{categoryEdit ? 'Запази' : 'Добави'}</button>{categoryEdit && <button type="button" className={styles.secondary} onClick={() => {setCategoryEdit(''); setCategoryName('');}}>Отказ</button>}</div></form></details>
-    <div className={styles.services}>{services.map(service => <article key={service.id}><div><small>{categories.find(c => c.id === service.category_id)?.name || service.category || 'Без категория'} · {service.duration_minutes} мин.</small><h3>{service.title}</h3><p>{service.price_bgn == null ? 'Без обявена цена' : `${service.price_bgn} €`}{!service.is_active && ' · Скрита'}</p></div><div className={styles.actions}><button type="button" className={styles.secondary} disabled={busy} onClick={() => openEditor(service)}>Редактирай</button><button type="button" className={styles.secondary} disabled={busy} onClick={() => void perform(async () => {await updateService(service.id, {is_active: !service.is_active}); onChange(await getServices());})}>{service.is_active ? 'Скрий' : 'Покажи'}</button><button type="button" className={styles.danger} disabled={busy} onClick={() => {if (confirm(`Да изтрием ли „${service.title}“?`)) void perform(async () => {await deleteService(service.id); onChange(await getServices());});}}>Изтрий</button></div></article>)}</div>
+    <div className={styles.services}>{services.map(service => <article key={service.id}>
+      <div className={styles.serviceInfo}>
+        <h3><button type="button" className={styles.serviceName} disabled={busy} aria-label={`Редактирай ${service.title}`} onClick={() => openEditor(service)}>{service.title}<Pencil size={17} aria-hidden="true" /></button></h3>
+        <small>{categories.find(c => c.id === service.category_id)?.name || service.category || 'Без категория'} · {service.duration_minutes} мин.</small>
+        <p>{service.price_bgn == null ? 'Без обявена цена' : `${service.price_bgn} €`}{!service.is_active && ' · Скрита'}</p>
+      </div>
+      <div className={styles.serviceActions}>
+        <button type="button" disabled={busy} onClick={() => openEditor(service)}><Pencil size={16} aria-hidden="true" />Редактирай</button>
+        <details className={styles.serviceMore}><summary>Още<ChevronDown size={16} aria-hidden="true" /></summary><div>
+          <button type="button" className={styles.secondary} disabled={busy} onClick={() => void perform(async () => {await updateService(service.id, {is_active: !service.is_active}); onChange(await getServices());})}>{service.is_active ? 'Скрий от сайта' : 'Покажи в сайта'}</button>
+          <button type="button" className={styles.danger} disabled={busy} onClick={() => {if (confirm(`Да изтрием ли „${service.title}“?`)) void perform(async () => {await deleteService(service.id); onChange(await getServices());});}}>Изтрий услугата</button>
+        </div></details>
+      </div>
+    </article>)}</div>
     </div>
     {editing && <section className={styles.editor} aria-labelledby="service-heading">
       {editing && <form key={typeof editing === 'string' ? editing : editing.id} onSubmit={e => {e.preventDefault(); const data = new FormData(e.currentTarget); const category = categories.find(c => c.id === data.get('category')); const price = String(data.get('price')).trim(); void perform(async () => {const payload = {title: String(data.get('title')).trim(), description: String(data.get('description')).trim(), category_id: category?.id || null, category: category?.name || '', duration_minutes: Number(data.get('duration')), price_bgn: price === '' ? null : Number(price)}; if (!payload.title) throw new Error('Въведете име на услугата.'); if (editing === 'new') await addService({...payload, is_active: true, sort_order: services.length + 1}); else await updateService(editing.id, payload); onChange(await getServices()); discardDraft(); setSuccess('Услугата е запазена.');});}}>
