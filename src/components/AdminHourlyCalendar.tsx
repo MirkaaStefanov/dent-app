@@ -3,7 +3,7 @@
 import AdminDayNavigator from './AdminDayNavigator';
 import PremiumSelect from '@/components/PremiumSelect';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import styles from './AdminHourlyCalendar.module.css';
 import { calculateAvailableSlots } from '@/lib/availability';
 import { Appointment, AppointmentStatus, DayOff, WorkingHour, Service } from '@/types/database';
@@ -159,6 +159,32 @@ export default function AdminHourlyCalendar({
 
   // Selected appointment for detail drawer / modal
   const [detailAppointment, setDetailAppointment] = useState<Appointment | null>(null);
+
+  const detailDialogRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!detailAppointment) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const dialog = detailDialogRef.current;
+    const controls = () => Array.from(dialog?.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, [tabindex="0"]') || []);
+    controls()[0]?.focus();
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDetailAppointment(null);
+      if (event.key !== 'Tab') return;
+      const items = controls();
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener('keydown', handleKey);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleKey);
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+    };
+  }, [detailAppointment]);
 
   // Toggle for full hourly timeline in day view
   const [showFullTimeline, setShowFullTimeline] = useState(false);
@@ -1190,6 +1216,7 @@ export default function AdminHourlyCalendar({
       {viewMode === 'day' && (
         <div className="space-y-4">
 
+          <div className={styles.localDayNavigation}><AdminDayNavigator date={activeDate} onChange={selectDay} /></div>
           <div className={styles.daySummary}>
             <div className={styles.daySummaryRow}><span>{activeDayAppointments.length} посещения {isFiltering ? 'по избраните филтри' : 'за деня'}</span><button type="button" onClick={() => setShowFullTimeline(!showFullTimeline)}>{showFullTimeline ? 'Скрий хронологията' : 'Покажи хронологията'}</button></div>
             {/* Day Off Banner in Day View */}
@@ -1222,8 +1249,7 @@ export default function AdminHourlyCalendar({
           </div>
 
           <section className={styles.availability}>
-            <div className={styles.localDayNavigation}><AdminDayNavigator date={activeDate} onChange={selectDay} /></div>
-            <div className={styles.slotHeading}><div><span className="eyebrow">НОВО ПОСЕЩЕНИЕ</span><h3>Свободни часове</h3><p>За процедура с продължителност {bookingDuration} мин. · Съобразени с работното време и почивките.</p></div><span className={styles.slotCount}>{availability.slots.length} налични</span></div>
+            <div className={styles.slotHeading}><div><h3>Свободни часове</h3><p>За процедура с продължителност {bookingDuration} мин. · Съобразени с работното време и почивките.</p></div><span className={styles.slotCount}>{availability.slots.length} налични</span></div>
             <label className={styles.serviceSelector}><span>Процедура за новия час</span><PremiumSelect aria-label="Процедура за новия час" value={bookingServiceId} onValueChange={onBookingServiceChange}>{services.filter(service => service.is_active).map(service => <option key={service.id} value={service.id}>{service.title} · {service.duration_minutes} мин.</option>)}</PremiumSelect></label>
             {availability.slots.length === 0 ? <p className={styles.noSlots}>{availability.reason}</p> : <div className={styles.slotGroups}>{['Сутрин', 'Следобед'].map((period, index) => {
               const slots = availability.slots.filter(slot => index === 0 ? slot < '13:00' : slot >= '13:00');
@@ -1295,7 +1321,7 @@ export default function AdminHourlyCalendar({
       {/* ───────────────────────────────────────────────────────── */}
       {detailAppointment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl border border-purple-100 shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-4 sm:p-7 space-y-4 animate-in zoom-in-95 duration-150">
+          <div ref={detailDialogRef} role="dialog" aria-modal="true" aria-label="Подробности за посещението" className={`${styles.detailDialog} bg-white rounded-3xl border border-purple-100 shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-4 sm:p-7 space-y-4 animate-in zoom-in-95 duration-150`}>
 
             {/* Modal Header */}
             <div className="flex items-start justify-between gap-3">
@@ -1316,6 +1342,7 @@ export default function AdminHourlyCalendar({
               <button
                 type="button"
                 onClick={() => setDetailAppointment(null)}
+                aria-label="Затвори подробностите"
                 className="p-1.5 rounded-xl text-slate-400 hover:text-purple-700 hover:bg-purple-50 transition-colors cursor-pointer shrink-0"
               >
                 <X className="w-5 h-5" />
@@ -1476,7 +1503,18 @@ export default function AdminHourlyCalendar({
         <div className={isToday && (apt.id === currentPatient?.id || apt.id === nextPatient?.id) ? styles.highlightPatient : undefined}>
           {isToday && apt.id === nextPatient?.id && <span className={styles.patientLabel}>Следващ пациент · {formatTimeHHmm(apt.start_time)}</span>}
           {isToday && apt.id === currentPatient?.id && <span className={styles.patientLabel}>В момента · до {formatTimeHHmm(apt.end_time)}</span>}
-          {renderDetailedAppointmentCard(apt)}
+          <button
+            type="button"
+            className={styles.mobileAppointment}
+            data-status={apt.status}
+            onClick={() => setDetailAppointment(apt)}
+            aria-label={`Отвори посещението на ${apt.patient_name} в ${formatTimeHHmm(apt.start_time)}`}
+          >
+            <span className={styles.mobileTime}><strong>{formatTimeHHmm(apt.start_time)}</strong><small>до {formatTimeHHmm(apt.end_time)}</small></span>
+            <span className={styles.mobilePatient}><strong>{apt.patient_name}</strong><small>{apt.service_title || 'Преглед'}</small></span>
+            <span className={styles.mobileMeta}>{apt.service_price !== undefined && <strong>{apt.service_price} €</strong>}<small>{apt.status === 'confirmed' ? 'Потвърден' : apt.status === 'completed' ? 'Приключил' : 'Отменен'}</small></span>
+          </button>
+          <div className={styles.desktopAppointment}>{renderDetailedAppointmentCard(apt)}</div>
         </div>
       </React.Fragment>)}
       {isToday && markerIndex === -1 && marker}

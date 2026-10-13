@@ -66,3 +66,34 @@
 .patientCard { border-radius: 14px; padding: 22px; }
 @media (min-width: 640px) { .weekScroller { display: block; overflow-x: auto; padding-bottom: 8px; } }
 @media (max-width: 767px) { .periodControls { width: 100%; margin-left: 0; } .viewControls { width: 100%; justify-content: space-between; gap: 8px; } .liveSummary { padding: 17px; gap: 15px; } .patientCard { padding: 17px 14px; } }
+
+.mobileAppointment { display: none; }
+@media (max-width: 639px) {
+  .desktopAppointment { display: none; }
+  .mobileAppointment { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; min-height: 82px; padding: 14px 12px; background: #fff; border: 1px solid #e6dfe9; border-left: 3px solid #815595; border-radius: 14px; text-align: left; cursor: pointer; color: #392c42; }
+  .mobileAppointment:hover { background: #faf7fc; }
+  .mobileAppointment:focus-visible { outline: 2px solid #633a78; outline-offset: 3px; }
+  .mobileAppointment[data-status="completed"] { border-left-color: #27816b; }
+  .mobileAppointment[data-status="cancelled"] { border-left-color: #b95467; background: #fcf8f9; }
+  .mobileTime, .mobilePatient, .mobileMeta { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .mobileTime strong { font-size: 19px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
+  .mobileTime small { font-size: 10px; color: #75647f; font-variant-numeric: tabular-nums; }
+  .mobilePatient strong { font-size: 14px; font-weight: 650; overflow-wrap: anywhere; line-height: 1.3; }
+  .mobilePatient small { font-size: 12px; color: #75647f; overflow-wrap: anywhere; line-height: 1.4; }
+  .mobileMeta { align-items: flex-end; }
+  .mobileMeta strong { font-size: 15px; font-weight: 650; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .mobileMeta small { font-size: 9px; font-weight: 600; color: #654377; background: #f0e8f5; padding: 4px 6px; border-radius: 6px; }
+  .mobileAppointment[data-status="completed"] .mobileMeta small { background: #e9f5ef; color: #236653; }
+  .mobileAppointment[data-status="cancelled"] .mobileMeta small { background: #faeaf0; color: #94384d; }
+  .liveSummary { padding: 12px 14px; gap: 8px; border-radius: 12px; margin-bottom: 12px; }
+  .liveSummary strong { font-size: 13px; }
+  .liveSummary small { display: none; }
+  .localDayNavigation { position: static; margin-bottom: 0; padding: 0 12px; border: 1px solid #e6dfe9; border-radius: 14px; box-shadow: none; }
+  .daySummaryRow > span { color: #75647f; }
+  .daySummaryRow button { color: #654377; }
+  .availability { border-radius: 14px; padding: 18px 14px; }
+  .slotHeading { gap: 12px; padding-bottom: 14px; }
+  .slotHeading h3 { font-size: 22px; margin-top: 0; }
+  .slotHeading p, .slotCount, .slotGroups h4, .serviceSelector > span { color: #75647f; }
+  .detailDialog button, .detailDialog a { min-height: 44px; }
+}
