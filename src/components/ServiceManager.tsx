@@ -63,9 +63,10 @@ export default function ServiceManager({ services, onChange, settings, onSetting
     })}</div><form onSubmit={e => {e.preventDefault(); void perform(async () => {await saveServiceCategory(categoryName, categoryEdit || undefined); setCategories(await getServiceCategories()); onChange(await getServices()); setCategoryName(''); setCategoryEdit('');});}}><label htmlFor="category-name">{categoryEdit ? 'Ново име на категорията' : 'Добави категория'}</label><div className={styles.inline}><input id="category-name" required maxLength={80} value={categoryName} onChange={e => setCategoryName(e.target.value)} placeholder="Напр. Профилактика" /><button disabled={busy}>{categoryEdit ? 'Запази' : 'Добави'}</button>{categoryEdit && <button type="button" className={styles.secondary} onClick={() => {setCategoryEdit(''); setCategoryName('');}}>Отказ</button>}</div></form></details>
     <div className={styles.services}>{services.map(service => <article key={service.id}>
       <div className={styles.serviceInfo}>
+        {!service.is_active && <span className={styles.hiddenBadge}>Скрита от сайта</span>}
         <h3><button type="button" className={styles.serviceName} disabled={busy} aria-label={`Редактирай ${service.title}`} onClick={() => openEditor(service)}>{service.title}<Pencil size={17} aria-hidden="true" /></button></h3>
         <small>{categories.find(c => c.id === service.category_id)?.name || service.category || 'Без категория'} · {service.duration_minutes} мин.</small>
-        <p>{service.price_bgn == null ? 'Без обявена цена' : `${service.price_bgn} €`}{!service.is_active && ' · Скрита'}</p>
+        <p>{service.price_bgn == null ? 'Без обявена цена' : `${service.price_bgn} €`}</p>
       </div>
       <div className={styles.serviceActions}>
         <button type="button" disabled={busy} onClick={() => openEditor(service)}><Pencil size={16} aria-hidden="true" />Редактирай</button>

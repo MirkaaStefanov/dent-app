@@ -69,3 +69,4 @@
   .services .serviceMore > div { grid-template-columns: 1fr; }
   .serviceMore > div button { padding: 10px 6px; overflow-wrap: anywhere; }
 }
+.hiddenBadge { display: inline-block; margin-bottom: 10px; padding: 5px 9px; border-radius: 6px; background: #fff2df; color: #805013; font-size: 12px; font-weight: 650; }
