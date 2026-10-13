@@ -373,7 +373,7 @@ export default function AdminHourlyCalendar({
       {/* ───────────────────────────────────────────────────────── */}
       <div className={`${styles.calendarToolbar} bg-linear-to-r from-purple-50/80 via-white to-purple-50/70 rounded-3xl border border-purple-100 p-3.5 sm:p-5 shadow-sm space-y-3.5`} data-expanded={showTools}>
 
-        <button className={styles.toolsToggle} type="button" aria-expanded={showTools} onClick={() => setShowTools(!showTools)}><Search size={17} />{showTools ? 'Скрий' : 'Търсене и изглед'}</button>
+        <button className={styles.toolsToggle} type="button" aria-expanded={showTools} onClick={() => setShowTools(!showTools)}><Search size={21} aria-hidden="true" />{showTools ? 'Скрий' : 'Търсене и изглед'}</button>
         {/* Row 1: Active Title & Stepper + View Switcher */}
         <div className={styles.toolbarRow}>
 
