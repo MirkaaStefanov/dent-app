@@ -1216,7 +1216,6 @@ export default function AdminHourlyCalendar({
       {viewMode === 'day' && (
         <div className="space-y-4">
 
-          <div className={styles.localDayNavigation}><AdminDayNavigator date={activeDate} onChange={selectDay} /></div>
           <div className={styles.daySummary}>
             <div className={styles.daySummaryRow}><span>{activeDayAppointments.length} посещения {isFiltering ? 'по избраните филтри' : 'за деня'}</span><button type="button" onClick={() => setShowFullTimeline(!showFullTimeline)}>{showFullTimeline ? 'Скрий хронологията' : 'Покажи хронологията'}</button></div>
             {/* Day Off Banner in Day View */}
