@@ -40,3 +40,32 @@
 .manualModal input, .manualModal select { border-radius: 4px; font-weight: 400; font-size: 13px; min-height: 46px; }
 .manualModal button { min-height: 44px; border-radius: 4px; font-weight: 400; }
 @media (max-width: 767px) { .manualModal { padding: 24px 20px; } }
+
+.mobileNav { display: none; }
+.moreMenu { display: grid; gap: 12px; }
+.moreMenu a, .moreMenu button { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 16px; background: white; border: 1px solid #e7dcec; border-radius: 12px; color: #563367; text-align: left; cursor: pointer; }
+.moreMenu a > svg:last-child, .moreMenu strong { margin-left: auto; }
+.moreMenu h2 { margin-top: 16px; font-size: 18px; }
+@media (max-width: 767px) {
+  .content { padding: 12px 14px calc(92px + env(safe-area-inset-bottom)); }
+  .dashboard[data-section="schedule"] .pageHeading, .metricsPanel, .tabs { display: none; }
+  .pageHeading { margin-bottom: 20px; }
+  .pageHeading h1 { font-size: 25px; margin: 0; }
+  .pageHeading p, .pageHeading :global(.eyebrow), .dateBadge { display: none; }
+  .headerRow { min-height: 64px; flex-wrap: nowrap; gap: 12px; padding: 10px 0; }
+  .headerBrand { min-width: 0; flex-shrink: 1; }
+  .headerBrand :global(p) { display: none; }
+  .headerActions { width: auto; gap: 6px; flex-shrink: 0; }
+  .headerActions > button:first-child { flex: none; padding: 10px; }
+  .headerActions > button:first-child span { display: none; }
+  .headerActions > button:nth-child(2) { display: none; }
+  .headerActions button { min-width: 44px; }
+  .mobileNav { position: fixed; z-index: 40; bottom: 0; left: 0; right: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: #fff; border-top: 1px solid #e7dcec; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); }
+  .mobileNav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 54px; color: #75647f; font-size: 10px; border-radius: 10px; }
+  .mobileNav a[aria-current="page"] { background: #f1e9f6; color: #563367; font-weight: 650; }
+  .mobileNav a:focus-visible { outline: 2px solid #633a78; outline-offset: -2px; }
+}
+@media (max-width: 767px) {
+  .headerBrand a > span:last-child > span:last-child { display: none; }
+  .content { scroll-padding-bottom: 100px; }
+}

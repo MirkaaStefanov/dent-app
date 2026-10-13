@@ -188,6 +188,8 @@ export default function AdminHourlyCalendar({
 
   // Toggle for full hourly timeline in day view
   const [showFullTimeline, setShowFullTimeline] = useState(false);
+  const [showTools, setShowTools] = useState(false);
+  const [showSlots, setShowSlots] = useState(false);
 
   const availability = calculateAvailableSlots({ date: activeDate, duration: bookingDuration,
     workingHours, daysOff, appointments, interval: slotInterval });
@@ -369,8 +371,9 @@ export default function AdminHourlyCalendar({
       {/* ───────────────────────────────────────────────────────── */}
       {/* 1. TOP TOOLBAR: VIEW TOGGLE, NAVIGATION & SEARCH */}
       {/* ───────────────────────────────────────────────────────── */}
-      <div className="bg-linear-to-r from-purple-50/80 via-white to-purple-50/70 rounded-3xl border border-purple-100 p-3.5 sm:p-5 shadow-sm space-y-3.5">
+      <div className={`${styles.calendarToolbar} bg-linear-to-r from-purple-50/80 via-white to-purple-50/70 rounded-3xl border border-purple-100 p-3.5 sm:p-5 shadow-sm space-y-3.5`} data-expanded={showTools}>
 
+        <button className={styles.toolsToggle} type="button" aria-expanded={showTools} onClick={() => setShowTools(!showTools)}><Search size={17} />{showTools ? 'Скрий' : 'Търсене и изглед'}</button>
         {/* Row 1: Active Title & Stepper + View Switcher */}
         <div className={styles.toolbarRow}>
 
@@ -474,7 +477,7 @@ export default function AdminHourlyCalendar({
         {viewMode === 'day' && <AdminDayNavigator date={activeDate} onChange={selectDay} />}
 
         {/* Row 2: Search & Status Filter */}
-        <div className="flex flex-col sm:flex-row items-center gap-2 pt-2.5 border-t border-purple-100">
+        <div className={`${styles.searchFilters} flex flex-col sm:flex-row items-center gap-2 pt-2.5 border-t border-purple-100`}>
           <div className="relative w-full sm:flex-1">
             <Search className="w-4 h-4 text-purple-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
@@ -1247,13 +1250,16 @@ export default function AdminHourlyCalendar({
             {renderDayAgenda()}
           </div>
 
-          <section className={styles.availability}>
+          <section className={styles.availability} data-expanded={showSlots}>
+            <button type="button" className={styles.slotsToggle} aria-expanded={showSlots} onClick={() => setShowSlots(!showSlots)}>Свободни часове <span>{availability.slots.length}</span><Plus size={18} /></button>
+            <div className={styles.availabilityContent}>
             <div className={styles.slotHeading}><div><h3>Свободни часове</h3><p>За процедура с продължителност {bookingDuration} мин. · Съобразени с работното време и почивките.</p></div><span className={styles.slotCount}>{availability.slots.length} налични</span></div>
             <label className={styles.serviceSelector}><span>Процедура за новия час</span><PremiumSelect aria-label="Процедура за новия час" value={bookingServiceId} onValueChange={onBookingServiceChange}>{services.filter(service => service.is_active).map(service => <option key={service.id} value={service.id}>{service.title} · {service.duration_minutes} мин.</option>)}</PremiumSelect></label>
             {availability.slots.length === 0 ? <p className={styles.noSlots}>{availability.reason}</p> : <div className={styles.slotGroups}>{['Сутрин', 'Следобед'].map((period, index) => {
               const slots = availability.slots.filter(slot => index === 0 ? slot < '13:00' : slot >= '13:00');
               return slots.length > 0 && <div key={period}><h4>{period}</h4><div className={styles.slotGrid}>{slots.map(slot => <button type="button" key={slot} onClick={() => onNewAppointmentAt(activeDate, slot)} aria-label={`Запиши час в ${slot}`}>{slot}<Plus size={12} /></button>)}</div></div>;
             })}</div>}
+            </div>
           </section>
 
           {/* Section 3: Optional Full Timeline */}
@@ -1496,7 +1502,7 @@ export default function AdminHourlyCalendar({
         {currentPatient && <div><span>В момента</span><strong>{currentPatient.patient_name}</strong><small>до {formatTimeHHmm(currentPatient.end_time)}</small></div>}
         <div><span>Следващ пациент</span><strong>{nextPatient?.patient_name || 'Няма оставащи посещения'}</strong>{nextPatient && <small>{formatTimeHHmm(nextPatient.start_time)}</small>}</div>
       </div>}
-      {activeDayAppointments.length === 0 && <div className={styles.emptyDay}><Clock size={19} /><div><strong>{isFiltering ? 'Няма посещения по избраните филтри' : 'Няма записани посещения за този ден'}</strong><p>Изберете процедура и свободен час за ново записване.</p></div></div>}
+      {activeDayAppointments.length === 0 && <div className={styles.emptyDay}><Clock size={19} /><div><strong>{isFiltering ? 'Няма намерени часове' : 'Няма записани часове'}</strong><p>Изберете процедура и свободен час за ново записване.</p></div></div>}
       {activeDayAppointments.map((apt, index) => <React.Fragment key={apt.id}>
         {isToday && index === markerIndex && marker}
         <div className={isToday && (apt.id === currentPatient?.id || apt.id === nextPatient?.id) ? styles.highlightPatient : undefined}>
@@ -1511,7 +1517,7 @@ export default function AdminHourlyCalendar({
           >
             <span className={styles.mobileTime}><strong>{formatTimeHHmm(apt.start_time)}</strong><small>до {formatTimeHHmm(apt.end_time)}</small></span>
             <span className={styles.mobilePatient}><strong>{apt.patient_name}</strong><small>{apt.service_title || 'Преглед'}</small></span>
-            <span className={styles.mobileMeta}>{apt.service_price !== undefined && <strong>{apt.service_price} €</strong>}<small>{apt.status === 'confirmed' ? 'Потвърден' : apt.status === 'completed' ? 'Приключил' : 'Отменен'}</small></span>
+            <span className={styles.mobileMeta}>{apt.service_price != null && <strong>{apt.service_price} €</strong>}<small>{apt.status === 'confirmed' ? 'Потвърден' : apt.status === 'completed' ? 'Приключил' : 'Отменен'}</small></span>
           </button>
           <div className={styles.desktopAppointment}>{renderDetailedAppointmentCard(apt)}</div>
         </div>

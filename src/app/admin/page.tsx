@@ -70,9 +70,25 @@ export default function AdminPage() {
   // Автентикация
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [adminUser, setAdminUser] = useState<{ email: string; name: string } | null>(null);
+  const verifiedAdminEmail = useRef<string | null>(null);
 
   // Табове: 'schedule' | 'services' | 'hours' | 'days_off' | 'settings'
-  const [activeTab, setActiveTab] = useState<'schedule' | 'services' | 'hours' | 'days_off' | 'settings'>('schedule');
+  const [activeTab, setActiveTab] = useState<'schedule' | 'services' | 'hours' | 'days_off' | 'settings' | 'more'>('schedule');
+
+  const navigateTab = (tab: typeof activeTab) => {
+    window.location.hash = tab;
+  };
+  useEffect(() => {
+    const readSection = () => {
+      const section = window.location.hash.slice(1);
+      if (['schedule', 'services', 'hours', 'days_off', 'settings', 'more'].includes(section)) {
+        setActiveTab(section as typeof activeTab);
+      } else setActiveTab('schedule');
+    };
+    readSection();
+    window.addEventListener('hashchange', readSection);
+    return () => window.removeEventListener('hashchange', readSection);
+  }, []);
 
   // Данни
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -127,7 +143,7 @@ export default function AdminPage() {
       }
       const admin = await getClinicAdmin();
       if (!active) return;
-      if (admin) { setIsAuthenticated(true); setAdminUser(admin); }
+      if (admin) { verifiedAdminEmail.current = admin.email; setIsAuthenticated(true); setAdminUser(admin); }
       else {
         setIsAuthenticated(false); setAdminUser(null);
         const { data } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
@@ -135,7 +151,13 @@ export default function AdminPage() {
       }
     };
     void checkAuth();
-    const subscription = supabase?.auth.onAuthStateChange(() => { setTimeout(() => { if (active) void checkAuth(); }, 0); });
+    const subscription = supabase?.auth.onAuthStateChange((event, session) => {
+      // Focus and token refresh can repeat SIGNED_IN on Android. Recheck only
+      // actual account changes; keep an open editor mounted during refresh.
+      if (event === 'SIGNED_OUT' || event === 'USER_UPDATED' || (event === 'SIGNED_IN' && session?.user.email !== verifiedAdminEmail.current)) {
+        setTimeout(() => { if (active) void checkAuth(); }, 0);
+      }
+    });
     return () => { active = false; subscription?.data.subscription.unsubscribe(); };
   }, [router]);
 
@@ -171,7 +193,7 @@ export default function AdminPage() {
       if (event.key?.startsWith('dent_')) void fetchAllData(false);
     };
     window.addEventListener('storage', handleStorageUpdate);
-    const interval = setInterval(() => void fetchAllData(false), 30000);
+    const interval = setInterval(() => { if (window.location.hash !== '#services') void fetchAllData(false); }, 30000);
     return () => {
       active = false;
       window.removeEventListener('storage', handleStorageUpdate);
@@ -419,7 +441,7 @@ export default function AdminPage() {
   // ОСНОВЕН ИЗГЛЕД НА АДМИН ПАНЕЛА
   // ==========================================
   return (
-    <div className={styles.dashboard}>
+    <div className={styles.dashboard} data-section={activeTab}>
 
       {/* Toast Notification */}
       {toastMessage && (
@@ -503,14 +525,14 @@ export default function AdminPage() {
 
       {/* Main Content Area */}
       <div className={styles.content}>
-        <div className={styles.pageHeading}><div><span className="eyebrow">ОРГАНИЗАЦИЯ НА КАБИНЕТА</span><h1>{({ schedule: 'Вашият график', services: 'Услуги и ценоразпис', hours: 'Работно време', days_off: 'Почивни дни и отпуски', settings: 'Настройки на кабинета' })[activeTab]}</h1><p>{({ schedule: 'Преглед на посещенията и грижата за Вашите пациенти.', services: 'Поддържайте услугите, цените и продължителността на процедурите.', hours: 'Определете кога кабинетът приема пациенти.', days_off: 'Планирайте периодите, в които няма да приемате пациенти.', settings: 'Информация за практиката и настройките за записване.' })[activeTab]}</p></div><span className={styles.dateBadge}><CalendarIcon size={17} />{formatBulgarianDate(todayStr)}</span></div>
+        <div className={styles.pageHeading}><div><span className="eyebrow">ОРГАНИЗАЦИЯ НА КАБИНЕТА</span><h1>{({ schedule: 'Вашият график', services: 'Услуги и ценоразпис', hours: 'Работно време', days_off: 'Почивни дни и отпуски', settings: 'Настройки на кабинета', more: 'Още' })[activeTab]}</h1><p>{({ schedule: 'Преглед на посещенията и грижата за Вашите пациенти.', services: 'Поддържайте услугите, цените и продължителността на процедурите.', hours: 'Определете кога кабинетът приема пациенти.', days_off: 'Планирайте периодите, в които няма да приемате пациенти.', settings: 'Информация за практиката и настройките за записване.', more: '' })[activeTab]}</p></div><span className={styles.dateBadge}><CalendarIcon size={17} />{formatBulgarianDate(todayStr)}</span></div>
 
         {/* Navigation Tabs (Modern Ergonomic Segmented Control) */}
         <nav aria-label="Раздели на лекарския панел" className={styles.tabs}>
           <button
             type="button"
             aria-current={activeTab === 'schedule' ? 'page' : undefined}
-            onClick={() => setActiveTab('schedule')}
+            onClick={() => navigateTab('schedule')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
               activeTab === 'schedule'
                 ? 'bg-purple-800 text-white shadow-xs'
@@ -529,7 +551,7 @@ export default function AdminPage() {
           <button
             type="button"
             aria-current={activeTab === 'services' ? 'page' : undefined}
-            onClick={() => setActiveTab('services')}
+            onClick={() => navigateTab('services')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
               activeTab === 'services'
                 ? 'bg-purple-800 text-white shadow-xs'
@@ -548,7 +570,7 @@ export default function AdminPage() {
           <button
             type="button"
             aria-current={activeTab === 'hours' ? 'page' : undefined}
-            onClick={() => setActiveTab('hours')}
+            onClick={() => navigateTab('hours')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
               activeTab === 'hours'
                 ? 'bg-purple-800 text-white shadow-xs'
@@ -562,7 +584,7 @@ export default function AdminPage() {
           <button
             type="button"
             aria-current={activeTab === 'days_off' ? 'page' : undefined}
-            onClick={() => setActiveTab('days_off')}
+            onClick={() => navigateTab('days_off')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
               activeTab === 'days_off'
                 ? 'bg-purple-800 text-white shadow-xs'
@@ -583,7 +605,7 @@ export default function AdminPage() {
           <button
             type="button"
             aria-current={activeTab === 'settings' ? 'page' : undefined}
-            onClick={() => setActiveTab('settings')}
+            onClick={() => navigateTab('settings')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
               activeTab === 'settings'
                 ? 'bg-purple-800 text-white shadow-xs'
@@ -595,13 +617,26 @@ export default function AdminPage() {
           </button>
         </nav>
 
+        <nav className={styles.mobileNav} aria-label="Основно меню">
+          {([{tab: 'schedule', label: 'Часове', icon: CalendarIcon}, {tab: 'services', label: 'Услуги', icon: FileText}, {tab: 'hours', label: 'Работно време', icon: Clock}, {tab: 'more', label: 'Още', icon: Building}] as const).map(({tab, label, icon: Icon}) => <a key={tab} href={`#${tab}`} aria-current={activeTab === tab || (tab === 'more' && ['days_off', 'settings'].includes(activeTab)) ? 'page' : undefined}><Icon size={20} /><span>{label}</span></a>)}
+        </nav>
+        {activeTab === 'more' && <div className={styles.moreMenu}>
+          <a href="#days_off"><CalendarOff size={20} />Почивни дни и отпуски<ArrowUpRight size={16} /></a>
+          <a href="#settings"><Building size={20} />Настройки<ArrowUpRight size={16} /></a>
+          <h2>Справки</h2>
+          <button onClick={() => setActiveKpiModal('today')}>Днешни часове <strong>{todayCount}</strong></button>
+          <button onClick={() => setActiveKpiModal('upcoming')}>Предстоящи <strong>{totalUpcoming}</strong></button>
+          <button onClick={() => setActiveKpiModal('completed')}>Приключили <strong>{completedCount}</strong></button>
+          <button onClick={() => setActiveKpiModal('revenue')}>Оборот за днес <strong>{todayRevenue} €</strong></button>
+        </div>}
+
         {/* ========================================================= */}
         {/* ТАБ 1: ГРАФИК И ЧАСОВЕ (SCHEDULE) */}
         {/* ========================================================= */}
         {activeTab === 'schedule' && (
           <div className="space-y-5">
             {/* Контекстна лента за бърз преглед */}
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-1.5 sm:p-2 shadow-xs">
+            <div className={`${styles.metricsPanel} bg-white rounded-2xl border border-slate-200/80 p-1.5 sm:p-2 shadow-xs`}>
               <div className={styles.metrics}>
 
                 {/* 1: Днес */}

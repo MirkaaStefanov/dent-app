@@ -32,3 +32,19 @@
 
 .categoryItem { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: 100%; }
 .categoryCount { font-size: 12px; color: #74667c; }
+
+.listScreen { display: grid; gap: 24px; }
+.listScreen[hidden] { display: none; }
+.editor { width: 100%; max-width: 620px; background: white; border: 1px solid #dfd0e8; border-radius: 14px; padding: 24px; }
+.editor form { display: grid; gap: 20px; }
+.editor label { display: grid; gap: 8px; font-size: 13px; }
+.editor .actions { padding-top: 12px; border-top: 1px solid #e7dcec; }
+.success { padding: 12px; border-radius: 8px; background: #e9f5ef; color: #236653; }
+@media(max-width: 767px) {
+  .editor { padding: 18px 14px; }
+  .editor input, .editor select, .editor textarea { scroll-margin-block: 100px; font-size: 16px !important; }
+  .editor .fields { grid-template-columns: 1fr; }
+  .editor .actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .dialogHeading h2 { font-size: 18px; }
+}
+.editorFields { display: grid; gap: 20px; min-width: 0; }

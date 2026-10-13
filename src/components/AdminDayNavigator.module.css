@@ -19,3 +19,17 @@
 .title strong { line-height: 1.4; }
 .controls { flex-shrink: 0; }
 .week { width: 100%; }
+
+.mobileDate { display: none; }
+@media (max-width: 767px) {
+  .navigator { background: transparent; padding: 0; }
+  .title { position: relative; }
+  .title > span { display: none; }
+  .title strong { font-family: inherit; font-weight: 650; font-size: 15px; color: #563367; }
+  .mobileDate { display: block; position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
+  .title:focus-within { outline: 2px solid #633a78; outline-offset: 3px; border-radius: 4px; }
+  .controls button { min-width: 36px; min-height: 44px; }
+  .bottom { margin-top: 12px; }
+  .date { display: none; }
+  .week button { min-height: 54px; background: #fff; border-radius: 10px; }
+}
