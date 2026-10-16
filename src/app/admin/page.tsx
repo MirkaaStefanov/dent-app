@@ -96,6 +96,14 @@ export default function AdminPage() {
   const [workingHours, setWorkingHours] = useState<WorkingHour[]>([]);
   const [daysOff, setDaysOff] = useState<DayOff[]>([]);
   const [settings, setSettings] = useState<ClinicSettings | null>(null);
+  const settingsDirty = useRef(false);
+  const settingsRevision = useRef(0);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const updateSettingsDraft = (updates: Partial<ClinicSettings>) => {
+    settingsDirty.current = true;
+    settingsRevision.current += 1;
+    setSettings(current => current ? { ...current, ...updates } : current);
+  };
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Филтри за графика
@@ -161,19 +169,20 @@ export default function AdminPage() {
     return () => { active = false; subscription?.data.subscription.unsubscribe(); };
   }, [router]);
 
-  const applyAdminData = useCallback(([apts, srvs, hrs, doff, setts]: Awaited<ReturnType<typeof loadAdminData>>) => {
+  const applyAdminData = useCallback(([apts, srvs, hrs, doff, setts]: Awaited<ReturnType<typeof loadAdminData>>, revision: number) => {
     setAppointments(apts);
     setServices(srvs);
     setWorkingHours(hrs);
     setDaysOff(doff);
-    setSettings(setts);
+    if (!settingsDirty.current && revision === settingsRevision.current) setSettings(setts);
     if (srvs.length > 0) setManualServiceId(current => current || srvs[0].id);
   }, []);
 
   const fetchAllData = useCallback(async (showSpinner = false) => {
+    const revision = settingsRevision.current;
     if (showSpinner) setIsLoading(true);
     try {
-      applyAdminData(await loadAdminData());
+      applyAdminData(await loadAdminData(), revision);
     } catch (err) {
       console.error('Error fetching admin data:', err);
     } finally {
@@ -184,8 +193,9 @@ export default function AdminPage() {
   useEffect(() => {
     if (!isAuthenticated) return;
     let active = true;
+    const revision = settingsRevision.current;
     void loadAdminData().then(data => {
-      if (active) applyAdminData(data);
+      if (active) applyAdminData(data, revision);
     }).catch(err => console.error('Error fetching admin data:', err))
       .finally(() => { if (active) setIsLoading(false); });
 
@@ -1051,7 +1061,7 @@ export default function AdminPage() {
                 <input
                   type="text"
                   value={settings.doctor_name}
-                  onChange={(e) => setSettings({ ...settings, doctor_name: e.target.value })}
+                  onChange={(e) => updateSettingsDraft({ doctor_name: e.target.value })}
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm bg-white font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                 />
               </div>
@@ -1063,7 +1073,7 @@ export default function AdminPage() {
                 <input
                   type="text"
                   value={settings.address}
-                  onChange={(e) => setSettings({ ...settings, address: e.target.value })}
+                  onChange={(e) => updateSettingsDraft({ address: e.target.value })}
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm bg-white font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                 />
               </div>
@@ -1076,7 +1086,7 @@ export default function AdminPage() {
                   <input
                     type="text"
                     value={settings.phone}
-                    onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
+                    onChange={(e) => updateSettingsDraft({ phone: e.target.value })}
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm bg-white font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                   />
                 </div>
@@ -1088,7 +1098,7 @@ export default function AdminPage() {
                   <input
                     type="email"
                     value={settings.email}
-                    onChange={(e) => setSettings({ ...settings, email: e.target.value })}
+                    onChange={(e) => updateSettingsDraft({ email: e.target.value })}
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm bg-white font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                   />
                 </div>
@@ -1104,7 +1114,7 @@ export default function AdminPage() {
                   type="number" min={1} max={168}
                   value={settings.reminder_hours_before}
                   onChange={(e) =>
-                    setSettings({ ...settings, reminder_hours_before: Number(e.target.value) })
+                    updateSettingsDraft({ reminder_hours_before: Number(e.target.value) })
                   }
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm bg-white font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
                 />
@@ -1114,17 +1124,28 @@ export default function AdminPage() {
               </div>
 
               <div className="pt-2">
+                <p className="text-xs text-slate-500 mb-3">След редакция натиснете „Запази промените“, за да се обнови информацията на сайта.</p>
                 <button
                   type="button"
+                  disabled={savingSettings}
                   onClick={async () => {
+                    if (savingSettings) return;
+                    const revision = settingsRevision.current;
+                    setSavingSettings(true);
                     try {
-                      await updateClinicSettings(settings);
+                      const saved = await updateClinicSettings(settings);
+                      if (revision === settingsRevision.current) {
+                        settingsDirty.current = false;
+                        settingsRevision.current += 1;
+                        setSettings(saved);
+                      }
                       showToast('Настройките бяха запазени успешно!');
                     } catch (error) { showToast(error instanceof Error ? error.message : 'Настройките не бяха записани.'); }
+                    finally { setSavingSettings(false); }
                   }}
                   className="px-6 py-3 rounded-xl bg-purple-800 hover:bg-purple-900 text-white font-bold text-xs transition-all shadow-md shadow-purple-900/15 cursor-pointer"
                 >
-                  Запази промените
+                  {savingSettings ? 'Записване…' : 'Запази промените'}
                 </button>
               </div>
             </div>

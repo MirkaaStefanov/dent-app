@@ -1,12 +1,14 @@
 'use client';
 
+import { initialClinicSettings } from '@/lib/data/initialData';
+
 import React, { useState } from 'react';
 import Link from 'next/link';
 import ClinicBrand from './ClinicBrand';
 import { Menu, X, Phone, Calendar } from 'lucide-react';
 import PatientAccountLink from './PatientAccountLink';
 
-export default function Navbar() {
+export default function Navbar({ phone = initialClinicSettings.phone }: { phone?: string }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
@@ -36,11 +38,11 @@ export default function Navbar() {
           {/* Desktop right: phone + CTA */}
           <div className="hidden lg:flex items-center gap-5">
             <a
-              href="tel:+359888123456"
+              href={`tel:${phone.replace(/[^+\d]/g, '')}`}
               className="text-sm text-slate-600 hover:text-purple-800 transition-colors flex items-center gap-1.5"
             >
               <Phone className="w-3.5 h-3.5" />
-              <span>088 812 3456</span>
+              <span>{phone}</span>
             </a>
             <Link
               href="/zapisi-chas"
@@ -56,7 +58,7 @@ export default function Navbar() {
           <div className="flex items-center gap-2 lg:hidden">
             <PatientAccountLink />
             <a
-              href="tel:+359888123456"
+              href={`tel:${phone.replace(/[^+\d]/g, '')}`}
               className="hidden sm:inline-flex p-2 rounded-full text-purple-800 hover:bg-purple-50 transition-colors"
               aria-label="Обаждане по телефон"
             >
@@ -120,10 +122,10 @@ export default function Navbar() {
               Запазете час онлайн
             </Link>
             <a
-              href="tel:+359888123456"
+              href={`tel:${phone.replace(/[^+\d]/g, '')}`}
               className="w-full text-center py-2.5 rounded-xl border border-gray-200 text-slate-700 font-semibold text-sm"
             >
-              Обаждане: 088 812 3456
+              Обаждане: {phone}
             </a>
           </div>
         </div>

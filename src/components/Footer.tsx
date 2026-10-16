@@ -1,7 +1,8 @@
+import { initialClinicSettings } from '@/lib/data/initialData';
 import Link from 'next/link';
 import { Lock } from 'lucide-react';
 
-export default function Footer() {
+export default function Footer({ phone = initialClinicSettings.phone }: { phone?: string }) {
   const currentYear = new Date().getFullYear();
 
   return (
@@ -45,8 +46,8 @@ export default function Footer() {
           </div>
 
           <div className="flex items-center gap-6">
-            <a href="tel:+359888123456" className="hover:text-white transition-colors">
-              088 812 3456
+            <a href={`tel:${phone.replace(/[^+\d]/g, '')}`} className="hover:text-white transition-colors">
+              {phone}
             </a>
             <Link
               href="/vhod"

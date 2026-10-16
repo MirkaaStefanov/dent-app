@@ -1,13 +1,14 @@
 import React from 'react';
 import Link from 'next/link';
-import { WorkingHour } from '@/types/database';
+import { WorkingHour, ClinicSettings } from '@/types/database';
 import { ExternalLink } from 'lucide-react';
 
 interface ContactSectionProps {
   workingHours: WorkingHour[];
+  settings: ClinicSettings;
 }
 
-export default function ContactSection({ workingHours }: ContactSectionProps) {
+export default function ContactSection({ workingHours, settings }: ContactSectionProps) {
   const sortedHours = [...workingHours].sort((a, b) => {
     const orderA = a.day_of_week === 0 ? 7 : a.day_of_week;
     const orderB = b.day_of_week === 0 ? 7 : b.day_of_week;
@@ -37,13 +38,13 @@ export default function ContactSection({ workingHours }: ContactSectionProps) {
             <div className="space-y-1">
               <span className="text-sm font-medium text-slate-400 block">Адрес</span>
               <p className="text-base font-semibold text-slate-900">
-                гр. Търговище
+                гр. {settings.city}
               </p>
               <p className="text-sm text-slate-500">
-                бул. „Васил Левски“ №12, ет. 2, каб. 4
+                {settings.address}
               </p>
               <a
-                href="https://maps.google.com/?q=бул.+Васил+Левски+12+Търговище"
+                href={`https://maps.google.com/?q=${encodeURIComponent(`${settings.address}, ${settings.city}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-sm text-purple-700 hover:text-purple-900 mt-1"
@@ -56,10 +57,10 @@ export default function ContactSection({ workingHours }: ContactSectionProps) {
             <div className="pt-4 border-t border-gray-200 space-y-1">
               <span className="text-sm font-medium text-slate-400 block">Телефон</span>
               <a
-                href="tel:+359888123456"
+                href={`tel:${settings.phone.replace(/[^+\d]/g, '')}`}
                 className="text-lg font-semibold text-slate-900 hover:text-purple-800 transition-colors block"
               >
-                088 812 3456
+                {settings.phone}
               </a>
               <p className="text-xs text-slate-400">
                 Приемът е с предварително записан час
@@ -69,10 +70,10 @@ export default function ContactSection({ workingHours }: ContactSectionProps) {
             <div className="pt-4 border-t border-gray-200 space-y-1">
               <span className="text-sm font-medium text-slate-400 block">Имейл</span>
               <a
-                href="mailto:dr.ayaz.dent@gmail.com"
-                className="text-sm text-slate-700 hover:text-purple-800 transition-colors block"
+                href={`mailto:${settings.email}`}
+                className="text-sm text-slate-700 hover:text-purple-800 transition-colors block break-words"
               >
-                dr.ayaz.dent@gmail.com
+                {settings.email}
               </a>
             </div>
 
