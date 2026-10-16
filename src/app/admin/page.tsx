@@ -5,6 +5,7 @@ import ReminderSettings from '@/components/ReminderSettings';
 import PremiumSelect from '@/components/PremiumSelect';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import AdminPushSettings from '@/components/AdminPushSettings';
 import Link from 'next/link';
 import ClinicBrand from '@/components/ClinicBrand';
 import { getClinicAdmin, isDemoEnabled } from '@/lib/supabase/admin';
@@ -536,6 +537,8 @@ export default function AdminPage() {
       {/* Main Content Area */}
       <div className={styles.content}>
         <div className={styles.pageHeading}><div><span className="eyebrow">ОРГАНИЗАЦИЯ НА КАБИНЕТА</span><h1>{({ schedule: 'Вашият график', services: 'Услуги и ценоразпис', hours: 'Работно време', days_off: 'Почивни дни и отпуски', settings: 'Настройки на кабинета', more: 'Още' })[activeTab]}</h1><p>{({ schedule: 'Преглед на посещенията и грижата за Вашите пациенти.', services: 'Поддържайте услугите, цените и продължителността на процедурите.', hours: 'Определете кога кабинетът приема пациенти.', days_off: 'Планирайте периодите, в които няма да приемате пациенти.', settings: 'Информация за практиката и настройките за записване.', more: '' })[activeTab]}</p></div><span className={styles.dateBadge}><CalendarIcon size={17} />{formatBulgarianDate(todayStr)}</span></div>
+
+        <AdminPushSettings />
 
         {/* Navigation Tabs (Modern Ergonomic Segmented Control) */}
         <nav aria-label="Раздели на лекарския панел" className={styles.tabs}>

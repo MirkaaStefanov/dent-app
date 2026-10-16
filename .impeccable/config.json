@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": [
+          "src/app/admin/page.tsx"
+        ],
+        "createdAt": "2026-10-16T15:54:27.849Z",
+        "reason": "Agent: current findings combine default gray text with hover-only colored backgrounds; each hover state switches text to white or rose-600 at the same time."
+      },
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": [
+          "src/app/layout.tsx"
+        ],
+        "createdAt": "2026-10-16T15:54:27.870Z",
+        "reason": "Agent: existing slate-900 text on near-white #FAF8FC has high contrast; no saturated colored surface is involved."
+      }
+    ]
+  }
+}

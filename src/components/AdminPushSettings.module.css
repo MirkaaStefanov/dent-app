@@ -1,0 +1,16 @@
+.panel { margin: 0 0 24px; border: 1px solid #e4d7eb; border-radius: 14px; padding: 20px; background: #fff; color: #493353; }
+.heading { display: flex; align-items: center; gap: 10px; }
+.heading h2 { margin: 0; font-size: 16px; font-weight: 700; }
+.panel p { margin: 10px 0 0; font-size: 13px; line-height: 1.65; color: #695572; overflow-wrap: anywhere; }
+.panel .status { color: #493353; font-weight: 600; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 16px; }
+.actions button { min-height: 44px; border: 1px solid #674078; border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 650; cursor: pointer; background: #674078; color: #fff; }
+.actions .secondary { background: #fff; color: #674078; }
+.actions button:hover { background: #51315f; color: #fff; }
+.actions button:focus-visible, .panel summary:focus-visible { outline: 3px solid #a67eba; outline-offset: 3px; }
+.actions button:disabled { opacity: .55; cursor: wait; }
+.panel .error { color: #a12636; }
+.panel details { margin-top: 12px; font-size: 13px; }
+.panel summary { width: fit-content; padding: 6px 0; color: #674078; cursor: pointer; }
+.panel ol { margin: 8px 0 0; padding-left: 22px; line-height: 1.7; }
+@media (max-width: 600px) { .panel { padding: 16px; } .actions button { flex: 1 1 auto; } }
