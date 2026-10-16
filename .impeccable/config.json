@@ -20,6 +20,15 @@
         ],
         "createdAt": "2026-10-16T15:54:27.870Z",
         "reason": "Agent: existing slate-900 text on near-white #FAF8FC has high contrast; no saturated colored surface is involved."
+      },
+      {
+        "rule": "ai-color-palette",
+        "value": "*",
+        "files": [
+          "src/app/admin/page.tsx"
+        ],
+        "createdAt": "2026-10-16T15:58:40.255Z",
+        "reason": "Agent: both flagged headings predate the PWA changes and belong to the existing clinic purple palette. This narrow functional addition preserves the incumbent visual identity, as the refinement workflow requires."
       }
     ]
   }
