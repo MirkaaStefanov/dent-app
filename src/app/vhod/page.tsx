@@ -7,6 +7,7 @@ import { ArrowLeft, CalendarDays, CheckCircle2, ShieldCheck } from 'lucide-react
 import ClinicBrand from '@/components/ClinicBrand';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase/client';
 import { getAccountDestination } from '@/lib/supabase/admin';
+import { ADMIN_APPOINTMENT_RETURN_KEY, safeAppointmentReturnUrl } from '@/lib/appointment-links';
 import styles from './patient-auth.module.css';
 
 function PatientLogin() {
@@ -18,10 +19,19 @@ function PatientLogin() {
   const [checkingSession, setCheckingSession] = useState(true);
   useEffect(() => {
     let active = true;
+    let openingProfile = false;
     let timer: ReturnType<typeof setTimeout>;
     async function openProfile() {
+      if (openingProfile) return;
+      openingProfile = true;
       const target = await getAccountDestination();
-      if (active) router.replace(target);
+      if (!active) return;
+      let appointmentReturn: string | null = null;
+      try {
+        if (target === '/admin/') appointmentReturn = safeAppointmentReturnUrl(sessionStorage.getItem(ADMIN_APPOINTMENT_RETURN_KEY));
+        sessionStorage.removeItem(ADMIN_APPOINTMENT_RETURN_KEY);
+      } catch { /* Normal sign-in remains available without storage. */ }
+      router.replace(appointmentReturn || target);
     }
     void supabase?.auth.getSession().then(({ data }) => {
       if (!active) return;

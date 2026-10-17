@@ -10,6 +10,7 @@ import Link from 'next/link';
 import ClinicBrand from '@/components/ClinicBrand';
 import { getClinicAdmin, isDemoEnabled } from '@/lib/supabase/admin';
 import { useRouter } from 'next/navigation';
+import { ADMIN_APPOINTMENT_RETURN_KEY, parseAppointmentTarget, appointmentTargetUrl, type AppointmentTarget } from '@/lib/appointment-links';
 import styles from './admin.module.css';
 import { calculateAvailableSlots } from '@/lib/availability';
 import {
@@ -75,11 +76,20 @@ export default function AdminPage() {
 
   // Табове: 'schedule' | 'services' | 'hours' | 'days_off' | 'settings'
   const [activeTab, setActiveTab] = useState<'schedule' | 'services' | 'hours' | 'days_off' | 'settings' | 'more'>('schedule');
+  const pendingAppointmentTarget = useRef<AppointmentTarget | null>(null);
+  const [linkedAppointmentId, setLinkedAppointmentId] = useState<string | null>(null);
+  const clearLinkedAppointment = useCallback(() => setLinkedAppointmentId(null), []);
 
   const navigateTab = (tab: typeof activeTab) => {
     window.location.hash = tab;
   };
   useEffect(() => {
+    const target = parseAppointmentTarget(window.location.search);
+    pendingAppointmentTarget.current = target;
+    if (target) {
+      window.location.hash = 'schedule';
+      try { sessionStorage.setItem(ADMIN_APPOINTMENT_RETURN_KEY, appointmentTargetUrl(target)); } catch { /* The current link still works without storage. */ }
+    }
     const readSection = () => {
       const section = window.location.hash.slice(1);
       if (['schedule', 'services', 'hours', 'days_off', 'settings', 'more'].includes(section)) {
@@ -175,6 +185,22 @@ export default function AdminPage() {
     setServices(srvs);
     setWorkingHours(hrs);
     setDaysOff(doff);
+    const target = pendingAppointmentTarget.current;
+    if (target) {
+      const appointment = apts.find(item => item.id === target.id);
+      setSelectedDateFilter(appointment?.date || target.date || '');
+      setLinkedAppointmentId(appointment?.id || null);
+      if (!appointment) {
+        setToastMessage('Часът вече не е наличен или не може да бъде зареден. Показваме деня му в графика.');
+        setTimeout(() => setToastMessage(null), 8000);
+      }
+      pendingAppointmentTarget.current = null;
+      const url = new URL(window.location.href);
+      url.searchParams.delete('appointment');
+      url.searchParams.delete('date');
+      window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+      try { sessionStorage.removeItem(ADMIN_APPOINTMENT_RETURN_KEY); } catch { /* Storage can be unavailable. */ }
+    }
     if (!settingsDirty.current && revision === settingsRevision.current) setSettings(setts);
     if (srvs.length > 0) setManualServiceId(current => current || srvs[0].id);
   }, []);
@@ -538,8 +564,6 @@ export default function AdminPage() {
       <div className={styles.content}>
         <div className={styles.pageHeading}><div><span className="eyebrow">ОРГАНИЗАЦИЯ НА КАБИНЕТА</span><h1>{({ schedule: 'Вашият график', services: 'Услуги и ценоразпис', hours: 'Работно време', days_off: 'Почивни дни и отпуски', settings: 'Настройки на кабинета', more: 'Още' })[activeTab]}</h1><p>{({ schedule: 'Преглед на посещенията и грижата за Вашите пациенти.', services: 'Поддържайте услугите, цените и продължителността на процедурите.', hours: 'Определете кога кабинетът приема пациенти.', days_off: 'Планирайте периодите, в които няма да приемате пациенти.', settings: 'Информация за практиката и настройките за записване.', more: '' })[activeTab]}</p></div><span className={styles.dateBadge}><CalendarIcon size={17} />{formatBulgarianDate(todayStr)}</span></div>
 
-        <AdminPushSettings />
-
         {/* Navigation Tabs (Modern Ergonomic Segmented Control) */}
         <nav aria-label="Раздели на лекарския панел" className={styles.tabs}>
           <button
@@ -761,6 +785,8 @@ export default function AdminPage() {
               </div>
             ) : (
               <AdminHourlyCalendar
+                initialAppointmentId={linkedAppointmentId}
+                onLinkedAppointmentOpened={clearLinkedAppointment}
                 selectedDate={selectedDateFilter || todayStr}
                 onSelectDate={(d) => setSelectedDateFilter(d)}
                 appointments={appointments}
@@ -1047,6 +1073,7 @@ export default function AdminPage() {
         {/* ========================================================= */}
         {activeTab === 'settings' && settings && (
           <div className="max-w-2xl space-y-6">
+            <AdminPushSettings />
             <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
               <h3 className="text-lg font-bold text-slate-900">
                 Настройки на стоматологичния кабинет

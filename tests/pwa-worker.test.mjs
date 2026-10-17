@@ -28,3 +28,19 @@ test('an open admin window is reused and focused', async () => {
   w.handlers.notificationclick({ notification: { close() {} }, waitUntil: promise => { pending = promise; } }); await pending;
   assert.deepEqual(calls, ['https://clinic.example/admin/#schedule','focused']); assert.equal(w.opened.length, 0);
 });
+
+test('push keeps the booking reference and clicking opens that appointment day', async () => {
+  const w = worker(); let pending;
+  const id = '22222222-2222-4222-8222-222222222222';
+  w.handlers.push({ data: { json: () => ({ title: 'Нов час', appointmentId: id, date: '2026-12-01', url: 'https://attacker.example' }) }, waitUntil: promise => { pending = promise; } });
+  await pending;
+  const data = w.shown[0].options.data;
+  assert.equal(data.appointmentId, id);
+  w.handlers.notificationclick({ notification: { close() {}, data }, waitUntil: promise => { pending = promise; } }); await pending;
+  assert.deepEqual(w.opened, [`https://clinic.example/admin/?appointment=${id}&date=2026-12-01#schedule`]);
+});
+test('invalid booking references fall back to the schedule', async () => {
+  const w = worker(); let pending;
+  w.handlers.notificationclick({ notification: { close() {}, data: { appointmentId: '../vhod', date: '2026-12-01' } }, waitUntil: promise => { pending = promise; } }); await pending;
+  assert.deepEqual(w.opened, ['https://clinic.example/admin/#schedule']);
+});

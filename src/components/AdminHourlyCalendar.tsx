@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 
 interface AdminHourlyCalendarProps {
+  initialAppointmentId?: string | null;
+  onLinkedAppointmentOpened?: () => void;
   selectedDate: string; // 'YYYY-MM-DD'
   onSelectDate: (dateStr: string) => void;
   appointments: Appointment[];
@@ -121,6 +123,8 @@ function getDayOffForDate(dateStr: string, list: DayOff[] = []): DayOff | undefi
 }
 
 export default function AdminHourlyCalendar({
+  initialAppointmentId,
+  onLinkedAppointmentOpened,
   selectedDate,
   onSelectDate,
   appointments,
@@ -158,7 +162,11 @@ export default function AdminHourlyCalendar({
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   // Selected appointment for detail drawer / modal
-  const [detailAppointment, setDetailAppointment] = useState<Appointment | null>(null);
+  const [detailAppointment, setDetailAppointment] = useState<Appointment | null>(() =>
+    appointments.find(appointment => appointment.id === initialAppointmentId) || null);
+  useEffect(() => {
+    if (initialAppointmentId) onLinkedAppointmentOpened?.();
+  }, [initialAppointmentId, onLinkedAppointmentOpened]);
 
   const detailDialogRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -1451,7 +1459,7 @@ export default function AdminHourlyCalendar({
                       onStatusChange(detailAppointment.id, 'cancelled');
                       setDetailAppointment(null);
                     }}
-                    className="px-2.5 py-1.5 rounded-xl text-slate-500 hover:bg-purple-50 text-xs font-semibold transition-colors cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-xl text-slate-500 hover:text-purple-800 hover:bg-purple-50 text-xs font-semibold transition-colors cursor-pointer"
                   >
                     Отмени
                   </button>
@@ -1747,7 +1755,7 @@ export default function AdminHourlyCalendar({
                 <button
                   type="button"
                   onClick={() => onStatusChange(apt.id, 'cancelled')}
-                  className="px-2.5 py-1.5 rounded-xl text-slate-500 hover:bg-purple-50 text-xs font-semibold transition-colors cursor-pointer"
+                  className="px-2.5 py-1.5 rounded-xl text-slate-500 hover:text-purple-800 hover:bg-purple-50 text-xs font-semibold transition-colors cursor-pointer"
                 >
                   Отмени
                 </button>
