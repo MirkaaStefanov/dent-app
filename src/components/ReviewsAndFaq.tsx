@@ -1,5 +1,7 @@
 'use client';
 
+import { initialClinicSettings } from '@/lib/data/initialData';
+
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { ChevronDown } from 'lucide-react';
@@ -27,7 +29,7 @@ const faqs = [
   },
 ];
 
-export default function ReviewsAndFaq() {
+export default function ReviewsAndFaq({ phone = initialClinicSettings.phone }: { phone?: string }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const toggleFaq = (index: number) => {
@@ -81,8 +83,8 @@ export default function ReviewsAndFaq() {
         {/* Contact hint */}
         <div className="mt-10 text-sm text-slate-400">
           Имате друг въпрос? Обадете се на{' '}
-          <a href="tel:+359888123456" className="text-purple-700 font-medium hover:text-purple-900">
-            088 812 3456
+          <a href={`tel:${phone.replace(/[^+\d]/g, '')}`} className="text-purple-700 font-medium hover:text-purple-900">
+            {phone}
           </a>
         </div>
 

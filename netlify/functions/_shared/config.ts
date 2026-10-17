@@ -20,16 +20,20 @@ export function serverDatabase() {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false }, global: { fetch: (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(3000) }) } });
 }
 
-export async function authorizeAdmin(request: Request) {
+export async function getAuthorizedAdmin(request: Request) {
   const token = request.headers.get('authorization')?.match(/^Bearer (.+)$/)?.[1];
-  if (!token) return false;
+  if (!token) return null;
   const url = Netlify.env.get('SUPABASE_URL') || Netlify.env.get('NEXT_PUBLIC_SUPABASE_URL');
   const key = Netlify.env.get('SUPABASE_SERVICE_ROLE_KEY') || Netlify.env.get('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY') || Netlify.env.get('NEXT_PUBLIC_SUPABASE_ANON_KEY');
-  if (!url || !key) return false;
+  if (!url || !key) return null;
   const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false }, global: { headers: { Authorization: `Bearer ${token}` }, fetch: (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(3000) }) } });
   const { data, error } = await db.auth.getUser(token);
-  if (error || !data.user) return false;
-  if (data.user.app_metadata?.role === 'admin') return true;
+  if (error || !data.user) return null;
+  if (data.user.app_metadata?.role === 'admin') return data.user;
   const { data: profile } = await db.from('profiles').select('role').eq('id', data.user.id).maybeSingle();
-  return profile?.role === 'admin';
+  return profile?.role === 'admin' ? data.user : null;
+}
+
+export async function authorizeAdmin(request: Request) {
+  return Boolean(await getAuthorizedAdmin(request));
 }

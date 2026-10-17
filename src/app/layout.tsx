@@ -1,7 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import PwaRegistration from '@/components/PwaRegistration';
 import "./globals.css";
 
 export const metadata: Metadata = {
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { capable: true, title: 'Моят кабинет', statusBarStyle: 'default' },
   icons: { icon: [{ url: '/clinic-icon.svg', type: 'image/svg+xml' }], apple: '/apple-touch-icon.png' },
   title: "Д-р Джанел Аяз | Стоматолог Търговище - Записване на час",
   description:
@@ -24,6 +27,8 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = { themeColor: '#674078' };
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -33,6 +38,7 @@ export default function RootLayout({
     <html lang="bg" className="scroll-smooth" data-scroll-behavior="smooth">
       <body className="min-h-screen flex flex-col bg-[#FAF8FC] text-slate-900 selection:bg-purple-200 selection:text-purple-900">
         {children}
+        <PwaRegistration />
       </body>
     </html>
   );
