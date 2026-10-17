@@ -1,7 +1,7 @@
 import webpush from 'web-push';
 
 export type StoredSubscription = { endpoint: string; p256dh: string; auth: string; vapid_public_key: string };
-export type PushMessage = { title: string; body: string; tag: string };
+export type PushMessage = { title: string; body: string; tag: string; appointmentId?: string; date?: string };
 export type PushConfig = { publicKey: string; privateKey: string; subject: string };
 
 export function pushConfig(): PushConfig | null {

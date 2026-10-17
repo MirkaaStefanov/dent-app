@@ -18,6 +18,7 @@ before(async () => {
   await db.exec('grant all on all tables in schema public to anon, authenticated, service_role;');
   await db.exec(await readFile(new URL('../supabase/migrations/20261005210545_automated_appointment_reminders.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../supabase/migrations/20261016154851_admin_web_push.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/20261017125023_admin_push_appointment_targets.sql', import.meta.url), 'utf8'));
   await db.query('insert into auth.users(id,email,email_confirmed_at) values ($1,$2,now())', [admin, 'mirkanstefanov2007@gmail.com']);
 });
 after(async () => db.close());
@@ -32,9 +33,11 @@ const jobs = async () => (await db.query('select * from public.admin_push_jobs o
 const claim = async () => (await db.query('select * from public.claim_admin_push_jobs(12)')).rows;
 
 test('a new booking creates one private notice for each already enabled device', async () => {
-  await subscribe(); await subscribe('https://web.push.apple.com/test'); await book();
+  await subscribe(); await subscribe('https://web.push.apple.com/test'); const id = await book();
   const queued = await jobs(); assert.equal(queued.length, 2);
   assert.equal(queued[0].payload.title, 'Нов записан час');
+  assert.equal(queued[0].payload.appointmentId, id);
+  assert.equal(queued[0].payload.date, '2026-12-01');
   assert.doesNotMatch(JSON.stringify(queued), /Private Patient|0888123456/);
 });
 test('enabling a device does not replay old appointments', async () => {
@@ -52,11 +55,14 @@ test('rescheduling, cancellation and deletion all survive as separate events', a
   await db.query("update public.appointments set status='cancelled' where id=$1", [id]);
   await db.query('delete from public.appointments where id=$1', [id]);
   assert.deepEqual((await jobs()).map(job => job.payload.title), ['Нов записан час','Преместен час','Отменен час','Изтрит час']);
+  assert.ok((await jobs()).every(job => job.payload.appointmentId === id));
+  assert.equal((await jobs()).at(-1).payload.date, '2026-12-01');
 });
 test('working hours and days off create notices; unchanged hours do not', async () => {
   await subscribe();
   await db.exec("insert into public.working_hours(day_of_week,day_name,start_time,end_time) values (1,'Понеделник','09:00','18:00'); update public.working_hours set end_time=end_time; insert into public.days_off(start_date,end_date,reason) values ('2026-12-01','2026-12-02','Почивка');");
   assert.deepEqual((await jobs()).map(job => job.payload.title), ['Промяна в работното време','Промяна в почивните дни']);
+  assert.ok((await jobs()).every(job => !job.payload.appointmentId));
 });
 test('a second worker cannot claim a leased job; stale leases use a new token', async () => {
   await subscribe(); await book(); await db.exec('set role service_role');

@@ -29,6 +29,33 @@
         ],
         "createdAt": "2026-10-16T15:58:40.255Z",
         "reason": "Agent: both flagged headings predate the PWA changes and belong to the existing clinic purple palette. This narrow functional addition preserves the incumbent visual identity, as the refinement workflow requires."
+      },
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": [
+          "src/components/AdminHourlyCalendar.tsx"
+        ],
+        "createdAt": "2026-10-17T12:52:09.038Z",
+        "reason": "Agent: remaining findings combine default gray text with hover-only backgrounds; all affected hover states now change text to purple-700, purple-800 or rose-600."
+      },
+      {
+        "rule": "ai-color-palette",
+        "value": "*",
+        "files": [
+          "src/components/AdminHourlyCalendar.tsx"
+        ],
+        "createdAt": "2026-10-17T12:52:09.078Z",
+        "reason": "Agent: the existing clinic purple palette predates this change and is preserved for the requested navigation fix."
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/components/AdminHourlyCalendar.tsx"
+        ],
+        "createdAt": "2026-10-17T12:53:14.967Z",
+        "reason": "Agent: existing appointment cards use the side border to encode cancelled, completed, past and confirmed status. The user requested notification navigation changes, preserving these established status indicators."
       }
     ]
   }
