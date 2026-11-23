@@ -8,6 +8,7 @@ import styles from './AdminHourlyCalendar.module.css';
 import { calculateAvailableSlots } from '@/lib/availability';
 import { Appointment, AppointmentStatus, DayOff, WorkingHour, Service } from '@/types/database';
 import { formatBulgarianDate } from '@/lib/notifications';
+import { isReservedSlot } from '@/lib/reserved-slots';
 import {
   Clock,
   ChevronLeft,
@@ -24,6 +25,8 @@ import {
   User,
   RotateCcw,
   X,
+  Lock,
+  Zap,
 } from 'lucide-react';
 
 interface AdminHourlyCalendarProps {
@@ -42,6 +45,7 @@ interface AdminHourlyCalendarProps {
   onSendReminder: (apt: Appointment) => void;
   onDeleteAppointment: (aptId: string, patientName: string) => void;
   onNewAppointmentAt: (dateStr: string, timeStr: string) => void;
+  onQuickReserve?: (dateStr: string, timeStr: string) => Promise<boolean>;
   daysOff?: DayOff[];
 }
 
@@ -136,8 +140,27 @@ export default function AdminHourlyCalendar({
   onSendReminder,
   onDeleteAppointment,
   onNewAppointmentAt,
+  onQuickReserve,
   daysOff = [],
 }: AdminHourlyCalendarProps) {
+  // „Запазване с 1 клик“: остава включено на това устройство, докато лекарката не го изключи.
+  // The calendar renders only after admin data loads on the client, so reading storage here is hydration-safe.
+  const [quickReserve, setQuickReserve] = useState(() => {
+    try { return typeof window !== 'undefined' && window.localStorage.getItem('dent-quick-reserve') === '1'; } catch { return false; }
+  });
+  const [reservingSlot, setReservingSlot] = useState<string | null>(null);
+  const toggleQuickReserve = () => {
+    setQuickReserve(prev => {
+      try { window.localStorage.setItem('dent-quick-reserve', prev ? '0' : '1'); } catch { /* storage unavailable */ }
+      return !prev;
+    });
+  };
+  const handleSlotClick = async (dateStr: string, slot: string) => {
+    if (!quickReserve || !onQuickReserve) return onNewAppointmentAt(dateStr, slot);
+    if (reservingSlot) return;
+    setReservingSlot(slot);
+    try { await onQuickReserve(dateStr, slot); } finally { setReservingSlot(null); }
+  };
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 30000);
@@ -1262,10 +1285,14 @@ export default function AdminHourlyCalendar({
             <button type="button" className={styles.slotsToggle} aria-expanded={showSlots} onClick={() => setShowSlots(!showSlots)}>Свободни часове <span>{availability.slots.length}</span><Plus size={18} /></button>
             <div className={styles.availabilityContent}>
             <div className={styles.slotHeading}><div><h3>Свободни часове</h3><p>За процедура с продължителност {bookingDuration} мин. · Съобразени с работното време и почивките.</p></div><span className={styles.slotCount}>{availability.slots.length} налични</span></div>
+            {onQuickReserve && <div className={styles.quickReserve} data-active={quickReserve}>
+              <button type="button" role="switch" aria-checked={quickReserve} onClick={toggleQuickReserve}><span className={styles.quickSwitch} aria-hidden="true" /><Zap size={15} aria-hidden="true" />Запазване с 1 клик</button>
+              <p>{quickReserve ? 'Докоснете свободен час и той веднага се запазва — пациентите вече не могат да го изберат онлайн. Освобождава се от картата на часа.' : 'Включете, за да запазвате часове от тетрадката с едно докосване, без да попълвате данни.'}</p>
+            </div>}
             <label className={styles.serviceSelector}><span>Процедура за новия час</span><PremiumSelect aria-label="Процедура за новия час" value={bookingServiceId} onValueChange={onBookingServiceChange}>{services.filter(service => service.is_active).map(service => <option key={service.id} value={service.id}>{service.title} · {service.duration_minutes} мин.</option>)}</PremiumSelect></label>
             {availability.slots.length === 0 ? <p className={styles.noSlots}>{availability.reason}</p> : <div className={styles.slotGroups}>{['Сутрин', 'Следобед'].map((period, index) => {
               const slots = availability.slots.filter(slot => index === 0 ? slot < '13:00' : slot >= '13:00');
-              return slots.length > 0 && <div key={period}><h4>{period}</h4><div className={styles.slotGrid}>{slots.map(slot => <button type="button" key={slot} onClick={() => onNewAppointmentAt(activeDate, slot)} aria-label={`Запиши час в ${slot}`}>{slot}<Plus size={12} /></button>)}</div></div>;
+              return slots.length > 0 && <div key={period}><h4>{period}</h4><div className={styles.slotGrid} data-quick={quickReserve && !!onQuickReserve}>{slots.map(slot => <button type="button" key={slot} disabled={reservingSlot !== null} data-busy={reservingSlot === slot} onClick={() => handleSlotClick(activeDate, slot)} aria-label={quickReserve && onQuickReserve ? `Запази часа ${slot} с едно докосване` : `Запиши час в ${slot}`}>{slot}{quickReserve && onQuickReserve ? <Lock size={12} /> : <Plus size={12} />}</button>)}</div></div>;
             })}</div>}
             </div>
           </section>
@@ -1400,8 +1427,24 @@ export default function AdminHourlyCalendar({
               </div>
             )}
 
+            {isReservedSlot(detailAppointment) && (
+              <div className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-purple-200 bg-purple-50/60 text-xs text-purple-950">
+                <span>Този час е запазен от Вас и не се показва за онлайн записване.</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDeleteAppointment(detailAppointment.id, detailAppointment.patient_name);
+                    setDetailAppointment(null);
+                  }}
+                  className="shrink-0 px-3 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold transition-colors cursor-pointer"
+                >
+                  Освободи часа
+                </button>
+              </div>
+            )}
+
             {/* Communication Action Row */}
-            <div className="flex items-center gap-2 pt-1 flex-wrap sm:flex-nowrap">
+            {!isReservedSlot(detailAppointment) && <div className="flex items-center gap-2 pt-1 flex-wrap sm:flex-nowrap">
               <a
                 href={`tel:${detailAppointment.patient_phone}`}
                 className="flex-1 min-w-[140px] inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-purple-50/80 hover:bg-purple-100 text-purple-950 font-bold text-xs border border-purple-200 transition-colors"
@@ -1433,7 +1476,7 @@ export default function AdminHourlyCalendar({
               >
                 <span>Viber</span>
               </button>
-            </div>
+            </div>}
 
             {/* Status Management Actions */}
             <div className="pt-3 border-t border-purple-100 flex items-center justify-between gap-2">
@@ -1520,11 +1563,12 @@ export default function AdminHourlyCalendar({
             type="button"
             className={styles.mobileAppointment}
             data-status={apt.status}
+            data-reserved={isReservedSlot(apt) || undefined}
             onClick={() => setDetailAppointment(apt)}
             aria-label={`Отвори посещението на ${apt.patient_name} в ${formatTimeHHmm(apt.start_time)}`}
           >
             <span className={styles.mobileTime}><strong>{formatTimeHHmm(apt.start_time)}</strong><small>до {formatTimeHHmm(apt.end_time)}</small></span>
-            <span className={styles.mobilePatient}><strong>{apt.patient_name}</strong><small>{apt.service_title || 'Преглед'}</small></span>
+            <span className={styles.mobilePatient}><strong>{isReservedSlot(apt) && <Lock size={13} aria-hidden="true" />}{apt.patient_name}</strong><small>{isReservedSlot(apt) ? 'Не е достъпен за онлайн записване' : apt.service_title || 'Преглед'}</small></span>
             <span className={styles.mobileMeta}>{apt.service_price != null && <strong>{apt.service_price} €</strong>}<small>{apt.status === 'confirmed' ? 'Потвърден' : apt.status === 'completed' ? 'Приключил' : 'Отменен'}</small></span>
           </button>
           <div className={styles.desktopAppointment}>{renderDetailedAppointmentCard(apt)}</div>
@@ -1731,13 +1775,20 @@ export default function AdminHourlyCalendar({
 
           {/* Action Row */}
           <div className="pt-2 border-t border-purple-100 flex items-center justify-between gap-2 flex-wrap">
+            {isReservedSlot(apt) ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-800">
+                <Lock className="w-3.5 h-3.5" />
+                Запазен — не е достъпен онлайн
+              </span>
+            ) : (
             <a
-              href={`tel:${apt.patient_phone}`}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-950 font-bold text-xs transition-colors active:scale-95 border border-purple-200"
-            >
-              <Phone className="w-3.5 h-3.5 text-purple-700" />
-              <span>{apt.patient_phone}</span>
-            </a>
+                href={`tel:${apt.patient_phone}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-950 font-bold text-xs transition-colors active:scale-95 border border-purple-200"
+              >
+                <Phone className="w-3.5 h-3.5 text-purple-700" />
+                <span>{apt.patient_phone}</span>
+              </a>
+            )}
 
             <div className="flex items-center gap-1.5 flex-wrap">
               {apt.status === 'confirmed' && (

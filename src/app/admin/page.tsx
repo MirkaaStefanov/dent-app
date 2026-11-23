@@ -62,6 +62,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import AdminHourlyCalendar from '@/components/AdminHourlyCalendar';
+import { buildReservedSlot } from '@/lib/reserved-slots';
 
 function loadAdminData() {
   return Promise.all([getAppointments(), getServices(), getWorkingHours(), getDaysOff(), getClinicSettings()]);
@@ -319,6 +320,30 @@ export default function AdminPage() {
       await deleteAppointment(aptId);
       setAppointments((prev) => prev.filter((a) => a.id !== aptId));
       showToast(`Часът за ${patientName} беше премахнат от графика.`);
+    }
+  };
+
+  // Запазване на свободен час с един клик (без данни за пациент), за да не може да се запише онлайн
+  const handleQuickReserve = async (dateStr: string, timeStr: string): Promise<boolean> => {
+    const selectedSrv = services.find((s) => s.id === manualServiceId) || services[0];
+    if (!selectedSrv) {
+      showToast('Няма заредени процедури. Обновете страницата.');
+      return false;
+    }
+    try {
+      const availability = await getAvailableSlots(dateStr, selectedSrv.duration_minutes);
+      if (!availability.slots.includes(timeStr)) {
+        showToast(`Часът ${timeStr} вече не е свободен. Обновете графика.`);
+        return false;
+      }
+      const newApt = await addAppointment(buildReservedSlot({ service: selectedSrv, date: dateStr, time: timeStr }));
+      setAppointments((prev) => [newApt, ...prev]);
+      showToast(`Часът ${timeStr} на ${formatBulgarianDate(dateStr)} е запазен и вече не се показва за онлайн записване.`);
+      return true;
+    } catch (err) {
+      console.error(err);
+      showToast(err instanceof Error ? err.message : 'Възникна грешка при запазване на часа.');
+      return false;
     }
   };
 
@@ -800,6 +825,7 @@ export default function AdminPage() {
                 onStatusChange={handleStatusChange}
                 onSendReminder={handleSendReminder}
                 onDeleteAppointment={handleDeleteAppointment}
+                onQuickReserve={handleQuickReserve}
                 onNewAppointmentAt={(dateStr, timeStr) => {
                   setManualDate(dateStr);
                   setManualTime(timeStr);
