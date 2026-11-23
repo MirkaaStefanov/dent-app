@@ -8,7 +8,7 @@ export const initialClinicSettings: ClinicSettings = {
   address: 'бул. „Васил Левски“ №12, ет. 2, каб. 4',
   phone: '+359 88 812 3456',
   email: 'dr.ayaz.dent@gmail.com',
-  slot_interval_minutes: 15,
+  slot_interval_minutes: 30,
   reminder_hours_before: 24,
 };
 

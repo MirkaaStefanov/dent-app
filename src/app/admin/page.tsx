@@ -1163,6 +1163,23 @@ export default function AdminPage() {
               <ReminderSettings />
 
               <div>
+                <label htmlFor="slot-interval" className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Интервал между свободните часове
+                </label>
+                <select
+                  id="slot-interval"
+                  value={settings.slot_interval_minutes}
+                  onChange={(e) => updateSettingsDraft({ slot_interval_minutes: Number(e.target.value) })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm bg-white font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
+                >
+                  {[15, 20, 30, 45, 60].map((minutes) => <option key={minutes} value={minutes}>На всеки {minutes} минути</option>)}
+                </select>
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  През колко минути се предлагат часове за записване — на сайта и в графика. Например при 30 мин.: 09:00, 09:30, 10:00.
+                </span>
+              </div>
+
+              <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Време за напомняне преди часа (в часове)
                 </label>

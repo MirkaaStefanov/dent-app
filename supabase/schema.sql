@@ -74,7 +74,7 @@ create table if not exists public.clinic_settings (
   address text not null default 'бул. „Васил Левски“ 12, ет. 2, каб. 4',
   phone text not null default '+359 88 812 3456',
   email text not null default 'dentist.targovishte@gmail.com',
-  slot_interval_minutes integer default 15,
+  slot_interval_minutes integer default 30,
   reminder_hours_before integer default 24
 );
 
@@ -167,7 +167,7 @@ values (
   'бул. „Васил Левски“ №12, ет. 2, каб. 4',
   '+359 88 812 3456',
   'dr.ayaz.dent@gmail.com',
-  15,
+  30,
   24
 ) on conflict do nothing;
 

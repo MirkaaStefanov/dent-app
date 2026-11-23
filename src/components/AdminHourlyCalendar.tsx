@@ -133,7 +133,7 @@ export default function AdminHourlyCalendar({
   onSelectDate,
   appointments,
   workingHours,
-  slotInterval = 15,
+  slotInterval = 30,
   bookingDuration = 30,
   services, bookingServiceId, onBookingServiceChange,
   onStatusChange,

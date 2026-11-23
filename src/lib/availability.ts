@@ -21,7 +21,7 @@ function minutesToTime(mins: number): string {
 
 export function calculateAvailableSlots({
   date: dateStr, duration: durationMinutes, workingHours, daysOff, appointments: allAppointments,
-  interval = 15, now = new Date(),
+  interval = 30, now = new Date(),
 }: {
   date: string; duration: number; workingHours: WorkingHour[]; daysOff: DayOff[];
   appointments: Pick<Appointment, 'date' | 'start_time' | 'end_time' | 'status'>[]; interval?: number; now?: Date;
@@ -75,7 +75,7 @@ export function calculateAvailableSlots({
   }
 
   // 4. Генериране на кандидат слотове
-  const slotInterval = Number.isFinite(interval) && interval > 0 ? interval : 15;
+  const slotInterval = Number.isFinite(interval) && interval > 0 ? interval : 30;
   const availableSlots: string[] = [];
 
   const isToday =

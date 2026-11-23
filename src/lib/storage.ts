@@ -127,6 +127,9 @@ export async function updateClinicSettings(settings: Partial<ClinicSettings>): P
   if (!Number.isFinite(updated.reminder_hours_before) || updated.reminder_hours_before < 1 || updated.reminder_hours_before > 168) {
     throw new Error('Времето за напомняне трябва да е между 1 и 168 часа.');
   }
+  if (!Number.isInteger(updated.slot_interval_minutes) || updated.slot_interval_minutes < 5 || updated.slot_interval_minutes > 120) {
+    throw new Error('Интервалът между часовете трябва да е между 5 и 120 минути.');
+  }
   if (isSupabaseConfigured && supabase) {
     const { error } = await supabase.from('clinic_settings').upsert(updated).abortSignal(AbortSignal.timeout(10000));
     if (error) throw new Error('Настройките не бяха записани в кабинета. Проверете връзката и опитайте отново.');

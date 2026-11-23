@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { calculateAvailableSlots } from '../src/lib/availability.ts';
 
 const schedule = { id: 'monday', day_of_week: 1, is_working: true, start_time: '09:00', end_time: '12:00', break_start: '10:00', break_end: '10:30' };
-const options = { date: '2026-10-05', duration: 30, workingHours: [schedule], daysOff: [], appointments: [], now: new Date(2026, 9, 4, 12) };
+const options = { date: '2026-10-05', duration: 30, workingHours: [schedule], daysOff: [], appointments: [], interval: 15, now: new Date(2026, 9, 4, 12) };
 const slots = extra => calculateAvailableSlots({ ...options, ...extra }).slots;
 const appointment = extra => ({ date: options.date, start_time: '11:00:00', end_time: '11:45:00', status: 'confirmed', ...extra });
 
@@ -34,5 +34,12 @@ test('busy appointments remain blocking regardless of UI search or status filter
 test('guards invalid duration and interval settings', () => {
   assert.deepEqual(slots({ duration: 0 }), []);
   assert.deepEqual(slots({ duration: NaN }), []);
-  assert.deepEqual(slots({ interval: 0 }), slots());
+  assert.deepEqual(slots({ interval: 0 }), slots({ interval: 30 }));
+});
+
+test('a 30-minute interval offers only :00 and :30 starts', async () => {
+  const { calculateAvailableSlots } = await import('../src/lib/availability.ts');
+  const workingHours = [{ id: 'tue', day_of_week: 2, day_name: 'Вторник', is_working: true, start_time: '09:00', end_time: '11:00' }];
+  const { slots } = calculateAvailableSlots({ date: '2026-12-01', duration: 30, workingHours, daysOff: [], appointments: [], interval: 30, now: new Date(2026, 10, 24) });
+  assert.deepEqual(slots, ['09:00', '09:30', '10:00', '10:30']);
 });
